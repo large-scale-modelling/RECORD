@@ -1,0 +1,128 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-TOTALS\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-totals\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-totals\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-totals\.py\fR prints row or entity counts for the RECORD provenance database\. The output format depends on the configured backend:
+.P
+\fBRelational backends (SQLite, PostgreSQL):\fR
+.P
+Queries every table in the \fBpublic\fR schema and prints the row count for each table, followed by a grand total\. Table names and counts are printed to standard output as they are retrieved\. Any table that cannot be counted (e\.g\. due to a permissions error) produces a warning on standard error and is skipped\.
+.P
+\fBGremlin backend:\fR
+.P
+Prints a breakdown of vertex counts grouped and sorted by label, then the total vertex count, followed by the same for edges\. The label breakdown is printed as a side effect of the count queries\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. The schema name for relational backends is hard\-coded as \fBpublic\fR\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fBrecord\fR library cannot be imported from \fBlib/\fR; or
+.IP "\(bu" 4
+a database connection error occurs\.
+.IP "" 0
+.P
+Individual table count failures are non\-fatal and produce warnings on standard error rather than a non\-zero exit\.
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+For relational backends, prints output of the form:
+.IP "" 4
+.nf
+Found <n> tables in schema 'public'
+<table_name>: <row_count>
+\|\.\|\.\|\.
+Grand total rows across all tables in 'public': <total>
+.fi
+.IP "" 0
+.P
+For the Gremlin backend, prints output of the form:
+.IP "" 4
+.nf
+[{'<label>': <count>, \|\.\|\.\|\.}]
+There are [<total>] vertices\.
+[{'<label>': <count>, \|\.\|\.\|\.}]
+There are [<total>] edges\.
+.fi
+.IP "" 0
+.SH "EXAMPLES"
+Print row counts for a PostgreSQL or SQLite database:
+.IP "" 4
+.nf
+record\-totals\.py
+.fi
+.IP "" 0
+.P
+Print vertex and edge counts for a Gremlin database:
+.IP "" 4
+.nf
+RECORD_DBTYPE=gremlin record\-totals\.py
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be importable as \fBrecord\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBrecord\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+Gary Polhill, Lorenzo Milazzo
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Debug output is unconditionally enabled by \fBrecord\.debug = True\fR at module level in \fBrecord\.py\fR and cannot be suppressed via the \fBRECORD_DEBUG\fR environment variable\.
+.P
+The schema name \fBpublic\fR is hard\-coded in the \fB__main__\fR block and cannot be overridden without editing the script\. The \fBget_table_names\fR and \fBcount_total_rows\fR functions accept a \fBschema\fR parameter but it is never exposed to the user\.
+.P
+\fBget_table_names\fR uses \fBpg_catalog\fR and is therefore PostgreSQL\-specific\. When \fBRECORD_DBTYPE\fR is \fBsqlite3\fR, the relational branch will call this function and it will fail, as SQLite does not have a \fBpg_catalog\fR schema\. The SQLite backend is therefore not supported by this script despite appearing to be\.
+.P
+The \fBget_vertices\fR and \fBget_edges\fR functions print the label\-grouped breakdown as a side effect via \fBprint(result)\fR rather than returning it\. This mixes display logic with data retrieval and makes the functions difficult to reuse\.
+.P
+The \fBget_nodes_by_label\fR function is defined but its only call site is commented out in \fB__main__\fR, so it is currently unused\.
+.P
+The Gremlin vertex and edge count queries use a hard\-coded evaluation timeout of 1,200,000 milliseconds (20 minutes) via \fBg\.with(\|\.\|\.\|\.)\fR, which ignores the \fBRECORD_GREMLIN_TIMEOUT\fR environment variable\.
+.P
+The \fBcount_rows_in_table\fR function uses an f\-string to construct a \fBWITH\fR cursor block, but \fBconn\.cursor()\fR as a context manager requires the database driver to support it; this will fail with drivers that do not implement \fB__exit__\fR on cursors\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-search\.py\fR, \fBrecord\-documentation\.py\fR, \fBrecord\-image\-project\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a quick summary of database population, reporting per\-table row counts for relational backends and per\-label vertex and edge counts for the Gremlin backend\.

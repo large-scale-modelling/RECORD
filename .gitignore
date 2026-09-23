@@ -1,0 +1,57 @@
+*.png
+*_
+*.e????
+*.o????
+
+# Open office crap
+.~lock*
+
+# Vim crud
+*~
+*.swp
+*.swo
+
+# Emacs execrement
+
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Apple stuff
+
+.DS_Store
+
+# R Stuff
+
+.RData
+.Rhistory
+
+*.png
+*.out
+*.err
+
+ssrep.db
+
+*.pdf
+
+# Results 
+
+all_results.csv
+batch1.csv
+batch2.csv
+final_results.csv
+graph.json
+table4.csv
+table4.paper.csv
+
+*.dump
+
+# Configuration
+
+ENVIRONMENT.sh
+
+batch?.*.csv
+dump*.json

@@ -1,0 +1,76 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "TRACE\-RECURSE\.SH" "" "March 2026" ""
+.SH "NAME"
+\fBtrace\-recurse\.sh\fR
+.SH "SYNOPSIS"
+\fBtrace\-recurse\.sh\fR \fIinput\.dot\fR \fItoken\fR \fIoutput\fR \fIfilter\fR \fIhistory\fR
+.SH "DESCRIPTION"
+\fBtrace\-recurse\.sh\fR is the recursive traversal helper for \fBtrace\.sh\fR\. It scans a Graphviz DOT file for all edges and nodes involving a given \fItoken\fR, appends matching lines to an accumulator file, and calls itself recursively for each newly discovered downstream node\.
+.P
+For each line in \fIinput\.dot\fR that mentions \fItoken\fR, the script distinguishes three cases\. If the line is an edge (\fB\->\fR) and \fItoken\fR is the source, the target node is extracted and, provided it has not been visited before (as recorded in \fIhistory\fR) and both the source and target entity types appear in \fIfilter\fR, the edge is appended to \fIoutput\fR and the script recurses with the target as the new token\. If the line is a node declaration for \fItoken\fR and the token's entity type appears in \fIfilter\fR, the node line is appended to \fIoutput\fR\. Edge lines in which \fItoken\fR is the target rather than the source are silently ignored, confining the traversal to forward (downstream) edges only\.
+.P
+The script enforces a caller restriction: it inspects its parent process name and refuses to run unless it was invoked by \fBtrace\.sh\fR or by another instance of itself\. This prevents accidental direct invocation\.
+.P
+This script is not intended to be called directly\. Use \fBtrace\.sh\fR instead\.
+.SH "ARGUMENTS"
+.TP
+\fIinput\.dot\fR
+Path to the Graphviz DOT file being traversed\. Passed unchanged through each level of recursion\.
+.TP
+\fItoken\fR
+The node identifier currently being traced, of the form \fBEntityType\.id\fR\. At the top level this is the original search token supplied to \fBtrace\.sh\fR; at deeper levels it is a downstream node discovered during traversal\.
+.TP
+\fIoutput\fR
+Path to the accumulator file to which matching node and edge lines are appended\. Shared across all recursive calls\.
+.TP
+\fIfilter\fR
+A space\-separated list of entity type names\. Only nodes and edges whose source and target types both appear in this list are written to \fIoutput\fR\.
+.TP
+\fIhistory\fR
+A string recording the node identifiers that have already been visited during the current traversal, used to detect cycles and prevent infinite recursion\. Each visited node identifier is concatenated onto this string before the next recursive call\.
+.SH "OPTIONS"
+This command takes no option flags\. All arguments are positional and mandatory\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns \-1 if the script is not called from \fBtrace\.sh\fR or \fBtrace\-recurse\.sh\fR\.
+.SH "ENVIRONMENT"
+No environment variables are used\.
+.SH "RETURN VALUE"
+None\. Results are written to the \fIoutput\fR accumulator file\.
+.SH "EXAMPLES"
+This script is not intended to be invoked directly\. It is called automatically by \fBtrace\.sh\fR\. A representative internal call takes the form:
+.IP "" 4
+.nf
+trace\-recurse\.sh provenance\.dot Containers\.container_505627104 \e
+    /tmp/tmp\.abc123 "Applications Containers" \e
+    Containers\.container_505627104
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBtrace\.sh\fR
+The parent script that performs argument parsing, option handling, and final output assembly\. \fBtrace\-recurse\.sh\fR must be called from \fBtrace\.sh\fR or from itself\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The caller restriction is implemented by checking the parent process name via \fBps $PPID\fR\. This check can fail in environments where \fBps\fR output formatting differs from the expected column layout, or where the parent process name is truncated\. It will also fail if \fBtrace\.sh\fR or \fBtrace\-recurse\.sh\fR are invoked via a wrapper or a shell that alters the process name\.
+.P
+The cycle detection mechanism concatenates visited node identifiers into a single string and uses a glob match (\fB[[ "$hist" != *$target* ]]\fR) to detect revisits\. This will produce false positives if one node identifier is a substring of another, potentially suppressing legitimate traversal paths\.
+.P
+The edge\-line regex used to extract the source node (\fBsed 's/^\.*"\e(\.*\e)"\.*\e\-\e>\.*"\.*"\.*$/\e1/'\fR) and target node (\fBsed 's/^\.*"\.*"\.*\e\-\e>\.*"\e(\.*\e)"\.*\e[\.*$/\e1/'\fR) relies on a fixed quoting and bracket structure\. DOT lines that deviate from this structure (for example those lacking a trailing \fB[label=\|\.\|\.\|\.]\fR attribute) will not be parsed correctly, and the extracted source or target may be empty or malformed\.
+.P
+Duplicate\-edge detection (\fBegrep \-q "$source\.*\e\-\e>\.*$target" "$output"\fR) uses an unanchored regex against the accumulated output file, which may produce false positives if the source or target strings contain regex metacharacters or appear as substrings of other identifiers\.
+.P
+The script reads from \fIinput\.dot\fR twice: once via \fBegrep "$token" "$input"\fR piped into the \fBwhile read\fR loop, and again by redirecting the same file into the loop with \fBdone < "$input"\fR\. The redirect at the end of the loop overrides the pipe, so the pipe's output is discarded and the loop actually iterates over the raw \fIinput\.dot\fR rather than the pre\-filtered grep output\. This means every line of the file is examined regardless of whether it mentions \fItoken\fR, making the grep redundant and the loop less efficient than intended\.
+.SH "COPYRIGHT"
+Copyright \(co 2023 Doug Salt\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBtrace\.sh\fR, \fBanalysis\.py\fR, \fBdot(1)\fR
+.SH "HISTORY"
+Created as a companion to \fBtrace\.sh\fR to work around the limitation that Bash functions cannot be called recursively with a consistent process space\. By externalising the recursion into a separate script, each recursive step runs in its own process, allowing the traversal to descend to arbitrary depth without corrupting shared shell state\.

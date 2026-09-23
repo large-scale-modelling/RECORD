@@ -1,0 +1,77 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-LOOK\-FOR\-ERRORS\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-look\-for\-errors\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-look\-for\-errors\.sh\fR \fIfile\fR [\fIfile\fR\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-look\-for\-errors\.sh\fR scans one or more log files for common error indicators produced by the RECORD workflow system and prints any matching lines to standard output with colour highlighting, line numbers, and filenames\.
+.P
+The script applies five successive \fBgrep\fR patterns in priority order\. Each pattern is tried in turn; if any match is found the script exits immediately after that pattern, so only the first matching category of error is reported per invocation:
+.IP "1." 4
+Lines containing \fB: line\fR \(em typically shell error messages of the form \fBscript\.sh: line 42: \|\.\|\.\|\.\fR\.
+.IP "2." 4
+Lines containing \fBline\fR that do not also contain \fBPipeline =\fR \(em catches further line\-reference messages while suppressing false positives from pipeline progress output\.
+.IP "3." 4
+Lines containing \fBerror\fR (case\-insensitive) that do not contain \fB\-\-error=\fR \(em catches error messages while suppressing lines that merely reference an \fB\-\-error=\fR option\.
+.IP "4." 4
+Lines containing \fBTrace\fR \(em catches stack traces and traceback headers\.
+.IP "5." 4
+Lines containing \fBdoes not exist\fR \(em catches missing\-file or missing\-entity messages\.
+.IP "" 0
+.P
+If none of the five patterns match any file, the script exits without output and returns the exit status of the final \fBgrep\fR\.
+.SH "OPTIONS"
+This script accepts no options of its own\. All arguments are passed directly to \fBgrep\fR as file paths via \fB$@\fR\. Standard \fBgrep\fR options are not supported and will be treated as filenames\.
+.SH "EXIT STATUS"
+Returns 0 if any pattern matches at least one line in the supplied files (i\.e\. an error indicator was found)\.
+.P
+Returns 1 if no pattern matches any file (i\.e\. no error indicators were found)\.
+.P
+The exit status reflects the last \fBgrep\fR executed; intermediate \fBgrep\fR invocations that match cause an immediate exit with status 0\.
+.SH "EXAMPLES"
+Scan a single log file:
+.IP "" 4
+.nf
+record\-look\-for\-errors\.sh run\.log
+.fi
+.IP "" 0
+.P
+Scan all log files in a directory:
+.IP "" 4
+.nf
+record\-look\-for\-errors\.sh logs/*\.log
+.fi
+.IP "" 0
+.P
+Use in a pipeline to fail a build if errors are detected:
+.IP "" 4
+.nf
+record\-look\-for\-errors\.sh run\.log && echo "Errors found" && exit 1
+.fi
+.IP "" 0
+.SH "FILES"
+No files are created or modified by this script\. The files named on the command line are opened read\-only by \fBgrep\fR\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Because each \fBgrep\fR exits the script on a match, only the first matching error category is reported\. If a log file contains both a \fB: line\fR message and a \fBTrace\fR, only the \fB: line\fR match will be shown\.
+.P
+The \fB\-\-color\fR flag is always passed to \fBgrep\fR, which may produce escape codes that corrupt output when the script is used in a non\-interactive pipeline or when the terminal does not support colour\.
+.P
+The script accepts no \fB\-\-help\fR or \fB\-\-version\fR flags, unlike the other RECORD utilities\.
+.P
+\fB$@\fR is unquoted in every \fBgrep\fR invocation, so filenames containing spaces or shell metacharacters will be split or expanded incorrectly\.
+.P
+The case\-insensitive \fBerror\fR match (pattern 3) will produce false positives on lines such as \fBstderr\fR, \fBerror_count=0\fR, or any log line that happens to contain the substring \fBerror\fR in a non\-error context\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-preprocess\.jl\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a quick diagnostic scan of workflow log files for common error patterns produced by the RECORD provenance system\.

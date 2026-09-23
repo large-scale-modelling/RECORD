@@ -1,0 +1,70 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-MR\-PROPER\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-mr\-proper\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-mr\-proper\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-mr\-proper\.sh\fR performs a full reset of the RECORD workflow environment\. It is the RECORD equivalent of \fBmake mrproper\fR in the Linux kernel build system: a destructive, non\-recoverable operation that returns the environment to a clean state\.
+.P
+The script prompts the user to type \fBYES\fR (uppercase) to confirm intent before proceeding\. Any other input causes the script to exit without taking any action\.
+.P
+On confirmation the script runs the following steps in order:
+.IP "1." 4
+\fB\fBrecord\-stop\.sh\fR\fR \(em terminates any running instance of \fBRECORD_START_PROGRAM\fR and removes the PID file\.
+.IP "2." 4
+\fB\fBrecord\-clean\.sh\fR\fR \(em removes initialisation and output files\.
+.IP "3." 4
+\fB\fBreccord\-delete\-database\.py\fR\fR \(em deletes the provenance database\.
+.IP "4." 4
+\fB\fB\. lib\.record\.mrproper\.sh\fR\fR \(em sources any additional project\-specific cleanup defined in \fBlib\.record\.mrproper\.sh\fR\.
+.IP "" 0
+.SH "OPTIONS"
+This script accepts no options or arguments\.
+.SH "EXIT STATUS"
+Returns 0 on successful completion of all steps\.
+.P
+Returns \-1 (typically 255) if the user does not confirm with \fBYES\fR\.
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time, or if any of the invoked scripts exit with a non\-zero status\.
+.SH "ENVIRONMENT"
+All environment variables required by \fBlib\.record\.common\.sh\fR, \fBrecord\-stop\.sh\fR, and \fBreccord\-delete\-database\.py\fR are inherited from the calling environment\. Refer to those scripts for the full list\.
+.SH "EXAMPLES"
+Perform a full reset of the RECORD environment:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-mr\-proper\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fBlib\.record\.mrproper\.sh\fR
+Project\-specific cleanup library sourced as the final step\. Must be present in the working directory if any project\-specific teardown is required\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBreccord\-delete\-database\.py\fR is a typo (double \fBc\fR) and will fail with a command\-not\-found error, silently skipping the database deletion unless \fBset \-e\fR is active\. The correct name is likely \fBrecord\-delete\-database\.py\fR\.
+.P
+The script does not use \fBset \-e\fR, so if \fBrecord\-stop\.sh\fR or \fBrecord\-clean\.sh\fR fails, execution continues to the database deletion and mrproper steps regardless\.
+.P
+\fBexit \-1\fR is used for the confirmation refusal exit\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+The warning message is printed with \fBecho\fR rather than directed to standard error, so it will be swallowed if stdout is redirected\.
+.P
+\fBlib\.record\.mrproper\.sh\fR is sourced unconditionally as the final step but there is no check that it exists; if the file is absent, the source command will fail with an error, making the success of an otherwise complete reset appear as a failure\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBlib\.record\.mrproper\.sh\fR, \fBrecord\-stop\.sh\fR, \fBrecord\-clean\.sh\fR, \fBrecord\-delete\-database\.py\fR, \fBrecord\-start\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools as a full environment reset command, inspired by the \fBmake mrproper\fR target in the Linux kernel build system which removes all generated files and returns the source tree to a pristine state\.

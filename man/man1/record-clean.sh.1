@@ -1,0 +1,71 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-CLEAN\.SH" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\-clean\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-clean\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-clean\.sh\fR restores a RECORD experiment directory to a clean state after execution\.
+.P
+The command removes generated output files and invokes additional cleanup logic provided by the RECORD workflow library\.
+.P
+Before performing any cleanup, the script checks whether the RECORD run process is still active using the \fBpid_of_record_run\fR variable\. If the process is still running, the script reports the condition and exits without making changes\.
+.P
+If no active run process is detected, the script removes all files in the current directory matching the pattern \fB*\.out\fR\. It then executes the cleanup procedures defined in \fBlib\.record\.clean\.sh\fR\.
+.P
+This command is typically used to reset the experiment directory to the state it was in immediately after initialisation\.
+.SH "OPTIONS"
+This command takes no command\-line options\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if a RECORD run process is still active or if cleanup operations fail\.
+.SH "ENVIRONMENT"
+The script depends on variables and functions defined in the following RECORD workflow libraries:
+.TP
+\fBlib\.record\.common\.sh\fR
+provides shared configuration variables including \fBpid_of_record_run\fR and \fBRECORD_START_PROGRAM\fR\.
+.TP
+\fBlib\.record\.clean\.sh\fR
+provides additional cleanup logic for removing generated files and restoring the experiment directory state\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Clean the experiment directory after a run:
+.IP "" 4
+.nf
+record\-clean\.sh
+.fi
+.IP "" 0
+.P
+Typical workflow:
+.IP "" 4
+.nf
+record\-run\.sh
+record\-clean\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+shared shell utilities and environment configuration\.
+.TP
+\fBlib\.record\.clean\.sh\fR
+additional cleanup procedures for RECORD experiments\.
+.SH "AUTHORS"
+Doug Salt, Lorenzo Milazzo, Gary Polhill
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The script assumes that the \fBpid_of_record_run\fR variable correctly identifies the active RECORD process\.
+.P
+Only files matching \fB*\.out\fR in the current directory are removed explicitly; additional cleanup depends on \fBlib\.record\.clean\.sh\fR\.
+.SH "COPYRIGHT"
+Copyright \(co 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\-run\.sh\fR, \fBrecord\-start\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow scripts to provide a consistent mechanism for resetting experiment directories after execution\.

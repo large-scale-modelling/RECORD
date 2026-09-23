@@ -1,0 +1,92 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-ERRORS\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-errors\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-errors\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-errors\.sh\fR scans workflow output files for error indicators using the \fBcheck_for_errors\fR function from \fBlib\.record\.common\.sh\fR\. It sources \fBlib\.record\.common\.sh\fR and operates in two phases:
+.P
+\fBPhase 1 \(em current or recent output:\fR
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is running\fR (the PID file exists and its stderr file descriptor resolves to a regular file), \fBcheck_for_errors\fR is run non\-interactively against the live stderr file\.
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is not running\fR, the script iterates over all \fB*\.out\fR files in the current working directory and prompts the user interactively for each one:
+.IP "\(bu" 4
+\fBY\fR \(em run \fBcheck_for_errors\fR on the file\.
+.IP "\(bu" 4
+\fBN\fR \(em skip the file\.
+.IP "\(bu" 4
+\fBQ\fR \(em exit the script immediately\.
+.IP "" 0
+
+.IP "" 0
+.P
+\fBPhase 2 \(em Slurm output:\fR
+.P
+Unconditionally runs \fBcheck_for_errors\fR on every \fB*\.out\fR file found under \fBslurm\-outputs/\fR, regardless of the outcome of phase 1\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables inherited from \fBlib\.record\.common\.sh\fR\.
+.SH "EXIT STATUS"
+Returns 0 on normal completion\.
+.P
+Returns 0 if the user enters \fBQ\fR during interactive prompting\.
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time (see \fBlib\.record\.common\.sh\fR documentation)\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the workflow program being monitored\. Set and validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\.
+.SH "EXAMPLES"
+Scan the current workflow run or recent output files:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-errors\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file written by the workflow run\. Read to determine whether \fBRECORD_START_PROGRAM\fR is currently running\.
+.TP
+\fB*\.out\fR
+Output files in the current working directory, inspected interactively when the program is not running\.
+.TP
+\fBslurm\-outputs/*\.out\fR
+Slurm job output files, always scanned non\-interactively in phase 2\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The condition \fB[ \-f $(get_stderr \|\.\|\.\|\.) ]\fR is unquoted; if the path returned by \fBget_stderr\fR contains spaces, the test will fail or behave unexpectedly\.
+.P
+\fBget_stderr\fR relies on \fB/proc/<pid>/fd/2\fR, which is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+The glob \fB*out\fR in the interactive phase matches any file ending in \fBout\fR, not just files with the \fB\.out\fR extension \(em for example, \fBstderr_output\fR would also be matched\. The Slurm phase uses \fB*\.out\fR (with a dot), so the two phases are inconsistent\.
+.P
+If \fBslurm\-outputs/\fR does not exist or contains no \fB*\.out\fR files, the \fBfor\fR loop in phase 2 will iterate once with the literal string \fBslurm\-outputs/*\.out\fR as \fB$file\fR, and \fBcheck_for_errors\fR will be called with that unexpanded glob as its argument, likely producing a \fBgrep\fR error\.
+.P
+Phase 2 always runs unconditionally after phase 1 completes normally\. There is no way to suppress the Slurm scan, even in environments where \fBslurm\-outputs/\fR is not relevant\.
+.P
+The interactive prompt does not have a newline after it, so on some terminals the user's input appears on the same line as the prompt\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\-look\-for\-errors\.sh\fR, \fBrecord\-edit\.sh\fR, \fBrecord\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide interactive and automated scanning of workflow output files for error indicators, including support for Slurm batch job outputs\.

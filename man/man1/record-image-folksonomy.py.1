@@ -1,0 +1,90 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-IMAGE\-FOLKSONOMY\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-image\-folksonomy\.py\fR
+.SH "SYNOPSIS"
+\fBfolksonomy\.py\fR
+.SH "DESCRIPTION"
+\fBfolksonomy\.py\fR generates a Graphviz DOT file representing the folksonomy metadata graph stored in the RECORD database\. It queries the subset of entity types concerned with tagging and classification \(em tags, applications, container types, studies, documentation, statistical methods, and visualisation methods \(em and writes the resulting graph to the file \fBfolksonomy\.dot\fR in the current working directory\.
+.P
+The script connects to the database using the connection helper provided by the \fBssrepi\fR library, calls \fBssrepi\.draw_graph\fR with the node specification, and then disconnects cleanly\. The node specification controls which fields are rendered in bold within each node's label when the corresponding field value is present in the database\.
+.P
+This script is intended to be run after one or more simulation runs have been recorded in the provenance database, to produce a visual summary of how tags have been applied across applications, container types, studies, documentation, and analytical method entities\.
+.SH "OPTIONS"
+This command takes no command\-line options\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if the database connection fails or if \fBssrepi\.draw_graph\fR encounters an error\.
+.SH "ENVIRONMENT"
+The script depends on environment variables consumed by the \fBssrepi\fR library to establish a database connection\. Refer to the \fBssrepi\fR (i\.e\. \fBrecord\.py\fR) documentation for the full list, including \fBRECORD_DBTYPE\fR, \fBRECORD_DBFILE\fR, \fBRECORD_DBUSER\fR, \fBRECORD_DBNAME\fR, \fBRECORD_POSTGRES_HOST\fR, \fBRECORD_POSTGRES_PORT\fR, \fBRECORD_POSTGRES_PASSWORD\fR, \fBRECORD_GREMLIN_HOST\fR, and \fBRECORD_GREMLIN_TIMEOUT\fR\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Generate the folksonomy metadata graph:
+.IP "" 4
+.nf
+folksonomy\.py
+.fi
+.IP "" 0
+.P
+Render the resulting DOT file to a PDF:
+.IP "" 4
+.nf
+folksonomy\.py
+dot \-Tpdf folksonomy\.dot \-o folksonomy\.pdf
+.fi
+.IP "" 0
+.SH "OUTPUT FILES"
+.TP
+\fBfolksonomy\.dot\fR
+Graphviz DOT representation of the folksonomy metadata graph, written to the current working directory\. Nodes correspond to entity instances from the database; edges represent relationships between them\. Orphaned nodes (those with no edges) are omitted\.
+.SH "NODE TYPES"
+The following entity types are included in the graph\. For each type, the fields listed in parentheses are rendered in bold when present:
+.TP
+\fBTags\fR (\fBID_TAG\fR)
+Free\-text tags applied to entities via the folksonomy system\.
+.TP
+\fBApplications\fR (\fBname\fR)
+Software applications registered in the provenance database\.
+.TP
+\fBContainerTypes\fR (\fBID_CONTAINER_TYPE\fR)
+Categories of data container, identified by type and format\.
+.TP
+\fBStudies\fR (\fBID_STUDY\fR)
+Research studies within a project, associated with tagged entities\.
+.TP
+\fBDocumentation\fR (\fBID_DOCUMENTATION\fR)
+Documentation artefacts linked to applications or other entities\.
+.TP
+\fBStatisticalMethods\fR (\fBID_STATISTICAL_METHOD\fR)
+Statistical methods used to analyse simulation outputs\.
+.TP
+\fBVisualisationMethods\fR (\fBID_VISUALISATION_METHOD\fR)
+Methods used to produce visualisation outputs\.
+.SH "FILES"
+.TP
+\fBlib/ssrepi\.py\fR
+The SSRepI library providing \fBconnect_db\fR, \fBdisconnect_db\fR, and \fBdraw_graph\fR\. Must be present in a \fBlib\fR subdirectory relative to the working directory, or otherwise on the Python path\.
+.TP
+\fBfolksonomy\.dot\fR
+Output file written to the current working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The output filename \fBfolksonomy\.dot\fR is hard\-coded and cannot be overridden without modifying the script\.
+.P
+The node specification is also hard\-coded; adding or removing entity types requires editing the script directly\.
+.P
+The \fBos\fR module is imported but never used\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBanalysis\.py\fR, \fBfinegrain\.py\fR, \fBrecord\.py\fR, \fBrecord\.sh\fR, \fBdot(1)\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a graphical overview of the folksonomy metadata captured during social simulation experiments, showing how tags relate to applications, container types, studies, documentation, and analytical methods\.

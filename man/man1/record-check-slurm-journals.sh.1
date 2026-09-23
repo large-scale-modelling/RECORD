@@ -1,0 +1,59 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-CHECK\-SLURM\-JOURNALS\.SH" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\-check\-slurm\-journals\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-check\-slurm\-journals\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-check\-slurm\-journals\.sh\fR scans Slurm output files in the current directory and checks them for errors\.
+.P
+The script searches for files matching the pattern \fBslurm*out\fR\. For each matching file it invokes the \fBcheck_for_errors\fR function provided by the RECORD workflow library\.
+.P
+This command is intended to help detect errors that occurred during Slurm batch job execution by inspecting the output journals produced by the scheduler\.
+.SH "OPTIONS"
+This command takes no command\-line options\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if the underlying error\-checking functions report failures\.
+.SH "ENVIRONMENT"
+The script requires the RECORD workflow shell utilities provided by:
+.TP
+\fBlib\.record\.common\.sh\fR
+provides the \fBcheck_for_errors\fR function used to analyse Slurm output files\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Check all Slurm job output files in the current directory:
+.IP "" 4
+.nf
+record\-check\-slurm\-journals\.sh
+.fi
+.IP "" 0
+.P
+Typical usage after a batch run:
+.IP "" 4
+.nf
+sbatch run\-model\.sh
+record\-check\-slurm\-journals\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+provides shared functions used by RECORD shell tools\.
+.SH "AUTHORS"
+Doug Salt, Lorenzo Milazzo, Gary Polhill
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The script only checks files matching the pattern \fBslurm*out\fR in the current directory and does not recurse into subdirectories\.
+.SH "COPYRIGHT"
+Copyright \(co 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBsbatch\fR(1), \fBsqueue\fR(1)
+.SH "HISTORY"
+Introduced as part of the RECORD workflow support scripts to automate checking of Slurm journal files for runtime errors\.

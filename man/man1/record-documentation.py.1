@@ -1,0 +1,90 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-DOCUMENTATION\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-documentation\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-documentation\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-documentation\.py\fR prints the schema specification of the RECORD provenance database to standard output\. It is a diagnostic and reference utility that exposes the data model defined by the \fBrecord\fR library in human\-readable form\.
+.P
+The script takes no arguments\. It imports the \fBrecord\fR library, calls \fBrecord\.specification()\fR, and writes the result directly to standard output\. If debug mode is active, entry and exit messages are written to standard error\.
+.SH "OPTIONS"
+This script accepts no options or arguments\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fBrecord\fR library cannot be imported from \fBlib/\fR; or
+.IP "\(bu" 4
+\fBrecord\.specification()\fR raises an unhandled exception\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+Prints the output of \fBrecord\.specification()\fR to standard output\. The format of this output is determined by the \fBrecord\fR library\.
+.SH "EXAMPLES"
+Print the database schema specification:
+.IP "" 4
+.nf
+record\-documentation\.py
+.fi
+.IP "" 0
+.P
+Capture the specification to a file:
+.IP "" 4
+.nf
+record\-documentation\.py > schema\.txt
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be importable as \fBrecord\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBrecord\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+Gary Polhill, Lorenzo Milazzo
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Debug output is unconditionally enabled by \fBrecord\.debug = True\fR at module level in \fBrecord\.py\fR and cannot be suppressed via the \fBRECORD_DEBUG\fR environment variable\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBexists\.py\fR, \fBget\-value\.py\fR, \fBsearch\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a command\-line interface for inspecting the provenance database schema, supporting all three backends (SQLite, PostgreSQL, and Gremlin) used by the RECORD workflow system\.

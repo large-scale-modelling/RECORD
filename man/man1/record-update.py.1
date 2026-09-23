@@ -1,0 +1,136 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-UPDATE\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-update\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-update\.py \-\-table=\fR\fITableName\fR \fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR [\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-update\.py\fR inserts or updates a single record in the RECORD provenance database from the command line\. It is the primary write helper used by \fBrecord\.sh\fR to record provenance entities such as applications, processes, boxes, persons, and pipelines\.
+.P
+The script takes a mandatory \fB\-\-table\fR argument identifying the entity class to operate on, followed by one or more \fB\-\-column=value\fR arguments supplying field values\. Column names are matched case\-insensitively against the attributes of the named entity class\.
+.P
+\fBrecord\-update\.py\fR first attempts to insert the record by calling \fBadd\fR\. If the record already exists (detected via a backend\-appropriate uniqueness exception \(em \fBGremlinVertexExists\fR, \fBsqlite3\.IntegrityError\fR, or \fBpsycopg2\.errors\.UniqueViolation\fR) it falls back to calling \fBupdate\fR on the same object instead\. Any other exception is reported to standard error and the script exits with a non\-zero status\.
+.P
+On success the primary key value of the inserted or updated record is printed to standard output\. If the primary key is composite, the component values are printed as a comma\-separated list\. This output is captured by \fBrecord\.sh\fR to chain identifiers between successive \fBrecord\-update\.py\fR calls\.
+.SH "OPTIONS"
+.TP
+\fB\-\-table=\fR\fITableName\fR
+Required\. The entity class to insert or update\. \fITableName\fR is case\-sensitive and must match a class defined in \fBrecord\.py\fR exactly (for example \fBApplication\fR, \fBBox\fR, \fBProcess\fR, \fBPerson\fR, \fBPipeline\fR)\.
+.TP
+\fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR
+Sets the field \fIcolumn_name\fR to \fIvalue\fR\. Column names are matched case\-insensitively\. At least one column argument must be supplied\. Any argument that does not match a column defined on the entity class raises an \fBIllegalArgumentError\fR and the script exits without writing to the database\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fB\-\-table\fR argument is missing or names an unknown class;
+.IP "\(bu" 4
+no valid column arguments are supplied;
+.IP "\(bu" 4
+a column name does not exist on the named entity class;
+.IP "\(bu" 4
+a database error other than a uniqueness violation occurs during \fBadd\fR; or
+.IP "\(bu" 4
+the fallback \fBupdate\fR call raises an exception\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\. The appropriate uniqueness exception type is selected at import time based on this variable\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+Prints the primary key value of the affected record to standard output on success\. For composite primary keys the component values are printed as a comma\-separated list, with quoting and the SQL \fBAND\fR clauses stripped\.
+.SH "EXAMPLES"
+Register a computer node:
+.IP "" 4
+.nf
+record\-update\.py \e
+    \-\-table=Computer \e
+    \-\-id_computer=computer_myhost \e
+    \-\-name=myhost \e
+    \-\-ip_address=192\.168\.1\.1
+.fi
+.IP "" 0
+.P
+Register or update an application, capturing its ID:
+.IP "" 4
+.nf
+id_app=$(record\-update\.py \e
+    \-\-table=Application \e
+    \-\-id_application=application_12345 \e
+    \-\-name=my_sim \e
+    \-\-language=Python)
+.fi
+.IP "" 0
+.P
+Register a process start, then update it with an end time:
+.IP "" 4
+.nf
+id_process=$(record\-update\.py \e
+    \-\-table=Process \e
+    \-\-id_process=process_abc \e
+    \-\-executable="$id_app" \e
+    \-\-start_time=20240101T120000)
+
+record\-update\.py \e
+    \-\-table=Process \e
+    \-\-id_process=process_abc \e
+    \-\-executable="$id_app" \e
+    \-\-end_time=20240101T130000
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be importable as \fBrecord\fR; the script appends no path prefix, so \fBrecord\.py\fR must be on \fBsys\.path\fR or in the same directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBtable_parameter\fR regex will raise an \fBAttributeError\fR rather than skipping gracefully if any argument in \fBsys\.argv\fR does not match the \fB\-\-table=\fR pattern, because \fBre\.match\fR returns \fBNone\fR for non\-matching strings and \fBNone\.groups()\fR is called unconditionally\. The same issue affects \fBcolumn_parameter\.match(arg)\fR in the column\-parsing loop\.
+.P
+Debug output is unconditionally enabled by the line \fBrecord\.debug = True\fR at module level and cannot be suppressed via the \fBRECORD_DEBUG\fR environment variable\.
+.P
+The variable declared as \fBcolums\fR (a typo for \fBcolumns\fR) on line 89 is unused; the actual \fBcolumns\fR dictionary is assigned by \fBparameters\fR on the next line\.
+.P
+The primary key output is derived by applying three successive regex substitutions to the SQL \fBWHERE\fR clause fragment returned by \fBgetPrimaryKeys\fR\. This approach is fragile: primary key values that contain the literal string ` AND ` or a leading \fB=\fR may be mangled in the output\.
+.P
+The bare \fBexcept: raise\fR in the \fBupdate\fR fallback swallows the original exception context, making it harder to diagnose failures that occur during the update path\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBexists\.py\fR, \fBget\-value\.py\fR, \fBsearch\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a single command\-line interface for upsert operations against the provenance database, supporting all three backends (SQLite, PostgreSQL, and Gremlin) used by the RECORD workflow system\.

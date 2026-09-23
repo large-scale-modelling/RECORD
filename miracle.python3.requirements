@@ -1,0 +1,9 @@
+rfc3987
+psycopg2-binary
+db-sqlite3
+gremlinpython==3.7.3
+graphviz
+getpass2
+python-magic
+regex
+libmagic

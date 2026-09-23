@@ -1,0 +1,127 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "LIB\.RECORD\.COMMON\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBlib\.record\.common\.sh\fR
+.SH "SYNOPSIS"
+\fB\. lib\.record\.common\.sh\fR
+.SH "DESCRIPTION"
+\fBlib\.record\.common\.sh\fR is a shell library sourced by RECORD workflow scripts\. It must not be executed directly\. When sourced it defines two utility functions (\fBcheck_for_errors\fR and \fBpidtree\fR and \fBget_stderr\fR) and performs startup validation of the environment required by the RECORD workflow system\.
+.P
+\fBStartup validation\fR runs unconditionally at source time and performs the following checks in order:
+.IP "1." 4
+\fBRECORD_START_PROGRAM\fR is set\. If not, a timestamped error is written to standard error and the sourcing shell exits with status \-1\.
+.IP "2." 4
+\fBRECORD_START_PROGRAM\fR names an executable on \fBPATH\fR\. If not, a timestamped error is written to standard error and the sourcing shell exits with status \-1\.
+.IP "3." 4
+If the PID file (\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR) exists, its first line is read and validated as a non\-empty integer\. If the PID file is present but malformed, a timestamped error is written to standard error and the sourcing shell exits with status \-1\.
+.IP "" 0
+.P
+The PID file path is also exported as \fBRECORD_PID_FILE\fR for use by the sourcing script\.
+.SH "FUNCTIONS"
+\fB\fBcheck_for_errors\fR\fR \fIfile\fR
+.P
+Scans \fIfile\fR for common error indicators and prints matching lines to standard output with colour highlighting, line numbers, and the filename\. The following patterns are checked (all patterns are always run, unlike \fBrecord\-look\-for\-errors\.sh\fR):
+.IP "\(bu" 4
+Lines containing \fB: line\fR
+.IP "\(bu" 4
+Lines containing \fBline\fR that do not match \fBpipeline\fR (case\-insensitive)
+.IP "\(bu" 4
+Lines containing \fBerror\fR (case\-insensitive) that do not contain \fB\-\-error\fR
+.IP "\(bu" 4
+Lines containing \fBTrace\fR
+.IP "\(bu" 4
+Lines containing \fBdoes not exist\fR
+.IP "\(bu" 4
+Lines containing \fBNo such file or directory\fR
+.IP "" 0
+.P
+Returns the exit status of the final \fBgrep\fR\. Takes exactly one argument; behaviour is undefined if called with zero or more than one argument\.
+.P
+\fB\fBpidtree\fR\fR [\fIpid\fR\|\.\|\.\|\.]
+.P
+Prints the full process subtree rooted at each given \fIpid\fR, one PID per line\. Works by reading the full process table from \fBps\fR and walking the parent\-child relationships recursively\. Compatible with both \fBbash\fR and \fBzsh\fR (sets \fBshwordsplit\fR when running under \fBzsh\fR)\.
+.P
+\fB\fBget_stderr\fR\fR \fIpid\fR
+.P
+Resolves and prints the path to the standard error file descriptor of the process with the given \fIpid\fR by reading \fB/proc/<pid>/fd/2\fR via \fBreadlink \-f\fR\. Prints a usage message and exits with status \-1 if no PID is supplied, or if the process is not found or has no stderr file descriptor\.
+.SH "ENVIRONMENT"
+The following variables are read at source time:
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the top\-level program being recorded\. Must be set and must resolve to an executable on \fBPATH\fR\. Required; the sourcing shell exits if this variable is unset\.
+.TP
+\fBRECORD_DBTYPE\fR
+Database backend type\. Used to construct the PID file path\. Should be one of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\.
+.TP
+\fBUSER\fR
+The current username\. Used to construct the PID file path\. Normally set automatically by the shell\.
+.P
+The following variable is set and exported by this library:
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file for this invocation, constructed as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\.
+.SH "EXIT STATUS"
+This library causes the sourcing shell to exit with status \-1 if any of the startup validation checks fail\. Under most shells \fB\-1\fR is interpreted as 255\.
+.P
+Individual functions return the exit status of the last command executed within them; \fBget_stderr\fR explicitly exits with \-1 on error\.
+.SH "EXAMPLES"
+Source the library at the top of a RECORD workflow script:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+\&\. lib\.record\.common\.sh
+.fi
+.IP "" 0
+.P
+Check a log file for errors after a run:
+.IP "" 4
+.nf
+check_for_errors run\.log
+.fi
+.IP "" 0
+.P
+Print all child PIDs of a running process:
+.IP "" 4
+.nf
+pidtree $PPID
+.fi
+.IP "" 0
+.P
+Find where a process is writing its stderr:
+.IP "" 4
+.nf
+get_stderr 12345
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file for the current workflow run, exported as \fBRECORD_PID_FILE\fR\. Read (but not written) by this library at source time if it already exists\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+The \fBpidtree\fR function is adapted from a solution at https://superuser\.com/questions/363169/ps\-how\-can\-i\-recursively\-get\-all\-child\-process\-for\-a\-given\-pid
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The startup validation block runs unconditionally when the file is sourced\. This means \fBRECORD_START_PROGRAM\fR and \fBRECORD_DBTYPE\fR must be exported before sourcing even in contexts where the PID\-file logic is not needed\.
+.P
+\fBexit \-1\fR is used throughout for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+\fBcheck_for_errors\fR takes a single unquoted filename argument\. Filenames containing spaces or shell metacharacters must be quoted by the caller, and passing multiple files is not supported (unlike \fBrecord\-look\-for\-errors\.sh\fR which accepts \fB$@\fR)\.
+.P
+\fBget_stderr\fR relies on \fB/proc/<pid>/fd/2\fR, which is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+\fBpidtree\fR uses a \fBdeclare \-A\fR associative array, which requires bash 4\.0 or later (or zsh)\. It will fail silently on bash 3\.x (the default on macOS)\.
+.P
+The PID file validation reads the file but takes no action if the PID is valid \(em it neither checks whether a process with that PID is actually running, nor prevents a second instance of the workflow from starting\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-look\-for\-errors\.sh\fR, \fBrecord\-truncate\-database\.py\fR, \fBrecord\-preprocess\.jl\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide shared utility functions and startup validation for shell scripts in the RECORD provenance system\.

@@ -1,0 +1,84 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-TAIL\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-tail\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-tail\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-tail\.sh\fR streams the live stderr output of a running RECORD workflow using \fBtail \-f\fR\. It sources \fBlib\.record\.common\.sh\fR, resolves the stderr file descriptor of the running process via \fBget_stderr\fR, and follows it continuously until interrupted\.
+.P
+If \fBRECORD_START_PROGRAM\fR is running (the PID file exists and \fB/proc/<pid>\fR is present), the script calls \fBget_stderr\fR with the recorded PID and passes the resolved path to \fBtail \-f\fR, allowing live monitoring of the workflow's output\.
+.P
+If the program is not running \(em either because the PID file is absent or the recorded process no longer exists \(em a timestamped error is written to standard error and the script exits with status \-1\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables inherited from \fBlib\.record\.common\.sh\fR\.
+.SH "EXIT STATUS"
+Returns 0 when \fBtail \-f\fR is interrupted (e\.g\. by Ctrl\-C)\.
+.P
+Returns \-1 (typically 255) if:
+.IP "\(bu" 4
+the PID file does not exist; or
+.IP "\(bu" 4
+the process recorded in the PID file is no longer running\.
+.IP "" 0
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time (see \fBlib\.record\.common\.sh\fR documentation)\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the workflow program being monitored\. Set and validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\.
+.SH "EXAMPLES"
+Follow the live output of a running workflow:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-tail\.sh
+.fi
+.IP "" 0
+.P
+Use with \fBrecord\-errors\.sh\fR to check for errors after tailing:
+.IP "" 4
+.nf
+record\-tail\.sh
+record\-errors\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file identifying the running workflow process\. Read to obtain the PID passed to \fBget_stderr\fR\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBexit \-1\fR is used for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+The \fB/proc/<pid>\fR liveness check is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+\fBget_stderr\fR relies on \fB/proc/<pid>/fd/2\fR, which is also Linux\-specific\.
+.P
+The two error branches (PID file absent and process not running) produce identical messages and exit codes, making it impossible to distinguish between a workflow that was never started and one that has already finished\.
+.P
+The result of \fBget_stderr\fR is unquoted in the \fBtail \-f\fR call; if the resolved stderr path contains spaces, the command will fail or behave unexpectedly\.
+.P
+If the workflow process exits while \fBtail \-f\fR is running, \fBtail \-f\fR will continue to block rather than exit, as it is following a file rather than a pipe\. The user must interrupt it manually with Ctrl\-C\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\-edit\.sh\fR, \fBrecord\-errors\.sh\fR, \fBrecord\-start\.sh\fR, \fBrecord\-stop\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide live streaming of workflow output, analogous to \fBtail \-f\fR on a log file but resolving the correct output file automatically from the running process state\.

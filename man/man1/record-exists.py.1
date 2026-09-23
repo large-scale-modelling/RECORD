@@ -1,0 +1,114 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-EXISTS\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-exists\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-exists\.py \-\-table=\fR\fITableName\fR \fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR [\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-exists\.py\fR checks whether a record matching the supplied field values exists in the RECORD provenance database and prints the result to standard output\. It is used by \fBrecord\.sh\fR to guard against duplicate insertions and to test for the presence of registered entities such as applications and boxes before acting on them\.
+.P
+The script takes a mandatory \fB\-\-table\fR argument identifying the entity class to query, followed by one or more \fB\-\-column=value\fR arguments supplying the field values that identify the record\. These values are used to populate an instance of the named entity class, whose \fBexists\fR method is then called against the database connection\.
+.P
+On success the string \fBTrue\fR or \fBFalse\fR is printed to standard output\. If the \fBexists\fR call raises an exception the script prints \fBFalse\fR, disconnects from the database, and exits with status 0 rather than propagating the error\.
+.P
+Column validation follows the same backend\-specific logic as \fBget\-value\.py\fR: for the Gremlin backend column names are checked against the entity class's in\-memory attribute dictionary; for SQLite and PostgreSQL they are verified by querying the live database schema via \fBPRAGMA TABLE_INFO\fR or \fBinformation_schema\.columns\fR respectively\.
+.SH "OPTIONS"
+.TP
+\fB\-\-table=\fR\fITableName\fR
+Required\. The entity class to query\. \fITableName\fR is case\-sensitive and must match a class defined in \fBrecord\.py\fR exactly (for example \fBApplication\fR, \fBBox\fR, \fBProcess\fR, \fBPerson\fR)\.
+.TP
+\fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR
+Supplies a field value used to identify the record to check\. Multiple such arguments may be given\. Column names are matched case\-insensitively\. At least one column argument must be supplied\.
+.SH "EXIT STATUS"
+Returns 0 in all cases, including when the record does not exist and when the \fBexists\fR call raises an exception\.
+.P
+Returns non\-zero only if argument parsing fails due to a missing \fB\-\-table\fR argument, an unknown table name, an invalid column name, or no column arguments being supplied\.
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\. Controls how column names are validated\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error via \fBrecord\.debug\fR\. Note that the module\-level \fBdebug\fR variable in \fBrecord\-exists\.py\fR itself is unconditionally set to \fBTrue\fR and is used independently of \fBrecord\.debug\fR within the \fBparameters\fR function\.
+.SH "RETURN VALUE"
+Prints \fBTrue\fR to standard output if the record exists, \fBFalse\fR otherwise\.
+.SH "EXAMPLES"
+Check whether an application is already registered:
+.IP "" 4
+.nf
+record\-exists\.py \-\-table=Application \-\-id_application=application_12345
+.fi
+.IP "" 0
+.P
+Use the result in a shell conditional:
+.IP "" 4
+.nf
+if [[ $(record\-exists\.py \-\-table=Application \-\-id_application="$id_app") == "True" ]]
+then
+    id_application="$id_app"
+fi
+.fi
+.IP "" 0
+.P
+Check whether a box exists before registering it:
+.IP "" 4
+.nf
+record\-exists\.py \-\-table=Box \-\-id_box=box_987654
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be present in a \fBlib\fR subdirectory relative to the working directory, or otherwise on the Python path\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBtable_parameter\fR regex will raise an \fBAttributeError\fR rather than skipping gracefully if any argument in \fBsys\.argv\fR does not match the \fB\-\-table=\fR pattern, because \fBre\.match\fR returns \fBNone\fR for non\-matching strings and \fBNone\.groups()\fR is called unconditionally\.
+.P
+The script defines its own module\-level \fBdebug\fR variable and sets it to \fBTrue\fR unconditionally\. This variable is used within \fBparameters\fR for diagnostic output but is entirely independent of \fBrecord\.debug\fR, which is used in \fB__main__\fR\. The two flags can therefore be in different states, leading to inconsistent diagnostic behaviour\.
+.P
+The broad \fBexcept: raise IllegalArgumentError(\|\.\|\.\|\.)\fR in the relational column\-validation branch masks any underlying database error with the generic message \fB"Unexpected error for querying column"\fR, making diagnosis of connection or query failures difficult\.
+.P
+The bare \fBexcept: print(False)\fR in \fB__main__\fR silently suppresses all exceptions raised by \fBrow\.exists\fR, including unexpected errors unrelated to the record's absence, and always exits with status 0\. Callers cannot distinguish a genuine \fBFalse\fR result from a failure\.
+.P
+The \fB__copyright__\fR field records 2022 while \fB__modified__\fR records 2017\-04\-20, suggesting one of the two dates is incorrect\.
+.P
+The \fBos\fR and \fBgetopt\fR modules are imported but never used\.
+.P
+The TODO comment for \fBArgumentValue\fR\-specific validation is present but the body is a bare \fBpass\fR, so no validation is performed\.
+.SH "COPYRIGHT"
+Copyright \(co 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBupdate\.py\fR, \fBget\-value\.py\fR, \fBsearch\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a command\-line existence check against the provenance database, used by \fBrecord\.sh\fR to determine whether entities such as applications and boxes have already been registered before attempting to insert or retrieve them\.

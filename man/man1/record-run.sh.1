@@ -1,0 +1,68 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-RUN\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-run\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-run\.sh\fR \fIcommand\fR [\fIarg\fR\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-run\.sh\fR is a wrapper that executes a command through the RECORD workflow environment\. It sources \fBlib/record\.sh\fR and delegates execution to the \fBrecord_run\fR function defined there, passing all arguments through unchanged\.
+.P
+This wrapper is typically used to launch commands that should be tracked as part of a RECORD experiment workflow\. It may be invoked directly or submitted as the executable in a Slurm batch job or other batch system, ensuring that commands run within the provenance\-recording environment regardless of execution context\.
+.P
+If \fBDEBUG\fR is set, entry and exit messages including the full argument list are written to standard error\.
+.SH "OPTIONS"
+This script accepts no options of its own\. All positional arguments are passed directly to \fBrecord_run\fR\. Refer to the documentation of \fBlib/record\.sh\fR for the arguments and behaviour of \fBrecord_run\fR\.
+.SH "EXIT STATUS"
+Returns the exit status of \fBrecord_run\fR\. Returns non\-zero if \fBlib/record\.sh\fR cannot be sourced\.
+.SH "ENVIRONMENT"
+.TP
+\fBDEBUG\fR
+When set (to any value), enables entry and exit messages on standard error showing the script name and arguments\.
+.P
+All environment variables required by \fBlib/record\.sh\fR and \fBrecord_run\fR are inherited from the calling environment\. Refer to \fBlib/record\.sh\fR for the full list\.
+.SH "EXAMPLES"
+Run a command under RECORD provenance tracking:
+.IP "" 4
+.nf
+record\-run\.sh my_sim \-\-config=conf\.yaml input\.dat
+.fi
+.IP "" 0
+.P
+Submit as a Slurm batch job:
+.IP "" 4
+.nf
+sbatch \-\-wrap="record\-run\.sh my_sim \-\-config=conf\.yaml input\.dat"
+.fi
+.IP "" 0
+.P
+Use from a Slurm job script:
+.IP "" 4
+.nf
+#!/usr/bin/env bash
+#SBATCH \-\-job\-name=my_sim
+record\-run\.sh my_sim \-\-config=conf\.yaml input\.dat
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.sh\fR
+The RECORD workflow library\. Sourced at startup using \fB\.\fR (dot source)\. Must be present at \fBlib/record\.sh\fR relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBDEBUG\fR check \fB[ \-n $DEBUG ]\fR is unquoted; when \fBDEBUG\fR is unset the expression becomes \fB[ \-n ]\fR, which evaluates to true in bash (since the single token \fB\-n\fR is treated as a non\-empty string)\. As a result the entry and exit messages are always printed to standard error regardless of whether \fBDEBUG\fR is set\. The correct form is \fB[ \-n "$DEBUG" ]\fR\.
+.P
+\fBlib/record\.sh\fR is sourced with a path relative to the working directory rather than relative to the script's own location\. If \fBrecord\-run\.sh\fR is invoked from a directory other than the RECORD project root, sourcing will fail\.
+.P
+The script sources \fBlib/record\.sh\fR rather than \fBlib\.record\.common\.sh\fR used by the other RECORD wrapper scripts, which is an inconsistency in the library path convention across the suite\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib/record\.sh\fR, \fBrecord\-start\.sh\fR, \fBrecord\-stop\.sh\fR, \fBrecord\-preprocess\.jl\fR, \fBrecord\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a minimal executable wrapper around \fBrecord_run\fR, suitable for direct invocation or submission to Slurm and other batch systems\.

@@ -1,0 +1,97 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-IMAGE\-PROVENANCE\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-image\-provenance\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-image\-provenance\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-image\-provenance\.py\fR queries the RECORD provenance database and produces a Graphviz DOT file visualising the full provenance graph\. It is the more comprehensive counterpart to \fBrecord\-image\-project\.py\fR, covering the complete set of entity types that make up an SSREPI provenance record rather than just the project\-level metadata\.
+.P
+The script connects to the database via the \fBssrepi\fR library, calls \fBssrepi\.draw_graph\fR with a fixed set of entity types and their label fields, and writes the result to \fBprovenance\.dot\fR in the current working directory\.
+.P
+The graph includes the following entity types, labelled by the specified field:
+.TS
+allbox;
+l l.
+Entity type	Label field
+\fBPersons\fR	\fBID_PERSON\fR
+\fBUsers\fR	\fBID_USER\fR
+\fBComputers\fR	\fBID_COMPUTER\fR
+\fBApplications\fR	\fBname\fR
+\fBProcesses\fR	\fBID_PROCESS\fR
+\fBArguments\fR	\fBID_ARGUMENT\fR
+\fBSpecifications\fR	\fBID_SPECIFICATION\fR
+\fBArgumentValues\fR	\fBID_ARGUMENT_VALUE\fR
+\fBStudies\fR	\fBID_STUDY\fR
+\fBContainers\fR	\fBID_CONTAINER\fR
+\fBVisualisationMethods\fR	\fBID_VISUALISATION_METHOD\fR
+\fBStatisticalMethods\fR	\fBID_STATISTICAL_METHOD\fR
+\fBVisualisations\fR	\fBID_VISUALISATION\fR
+\fBStatistics\fR	\fBID_STATISTIC\fR
+\fBParameters\fR	\fBID_PARAMETER\fR
+\fBStatisticalVariables\fR	\fBID_STATISTICAL_VARIABLE\fR
+\fBValue\fR	\fBID_VALUE\fR
+.TE
+.P
+The resulting \fBprovenance\.dot\fR file can be rendered to an image using Graphviz, for example with \fBdot \-Tpng provenance\.dot \-o provenance\.png\fR\. For large provenance graphs, \fBneato\fR or \fBsfdp\fR may produce more legible layouts than \fBdot\fR\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. The entity types, label fields, and output path are all hard\-coded\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fBssrepi\fR library cannot be imported from \fBlib/\fR; or
+.IP "\(bu" 4
+a database connection or query error occurs\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBssrepi\fR library\. Refer to \fBssrepi\.py\fR for the full list\.
+.SH "RETURN VALUE"
+Writes the Graphviz DOT representation of the full provenance graph to \fBprovenance\.dot\fR in the current working directory\. Any existing \fBprovenance\.dot\fR will be overwritten without warning\.
+.SH "EXAMPLES"
+Generate the provenance graph and render it to PNG:
+.IP "" 4
+.nf
+record\-image\-provenance\.py
+dot \-Tpng provenance\.dot \-o provenance\.png
+.fi
+.IP "" 0
+.P
+Generate and render using a force\-directed layout for large graphs:
+.IP "" 4
+.nf
+record\-image\-provenance\.py
+sfdp \-Tsvg provenance\.dot \-o provenance\.svg
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/ssrepi\.py\fR
+The SSREPI provenance library\. Must be importable as \fBssrepi\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBssrepi\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.TP
+\fBprovenance\.dot\fR
+Output Graphviz DOT file written to the current working directory\. Overwritten on each run without warning\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+This script imports \fBssrepi\fR rather than \fBrecord\fR, unlike every other script in the RECORD suite\. It is unclear whether this is intentional (the script predates the renaming of the library from SSREPI to RECORD) or an oversight\. If \fBssrepi\fR is simply an alias or earlier version of \fBrecord\fR, the script should be updated to import \fBrecord\fR for consistency\.
+.P
+The output path \fBprovenance\.dot\fR, the entity types, and the label fields are all hard\-coded and cannot be changed without editing the script\.
+.P
+Any existing \fBprovenance\.dot\fR in the current working directory is silently overwritten\.
+.P
+The \fB__credits__\fR field is empty\.
+.P
+The \fBValue\fR entity type uses a singular name while all other entity types use plurals, which may indicate a naming inconsistency in the underlying schema\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBssrepi\.py\fR, \fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-image\-project\.py\fR, \fBrecord\-trace\.py\fR, \fBrecord\-documentation\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD/SSREPI workflow tools to produce a Graphviz visualisation of the complete provenance graph, covering all entity types tracked by the SSREPI provenance system\.

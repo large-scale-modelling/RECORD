@@ -1,0 +1,83 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-STATUS\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-status\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-status\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-status\.sh\fR reports the status of a running RECORD workflow by printing a full process listing for every process in the workflow's process tree\. It sources \fBlib\.record\.common\.sh\fR and uses \fBpidtree\fR to enumerate all child processes of the recorded PID, then runs \fBps \-f\fR on each one\.
+.P
+If \fBRECORD_START_PROGRAM\fR is running (the PID file exists and \fB/proc/<pid>\fR is present), one \fBps\fR output line is printed per process in the tree, in the format produced by \fBps \-\-no\-headers \-f\fR\.
+.P
+If the program is not running, a timestamped message is written to standard error, any stale PID file is removed, and the script exits with status \-1\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables inherited from \fBlib\.record\.common\.sh\fR\.
+.SH "EXIT STATUS"
+Returns 0 if \fBRECORD_START_PROGRAM\fR is running and \fBps\fR output is produced successfully\.
+.P
+Returns \-1 (typically 255) if \fBRECORD_START_PROGRAM\fR is not running\.
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time (see \fBlib\.record\.common\.sh\fR documentation)\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the workflow program being monitored\. Set and validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\. Removed if found stale (program not running)\.
+.SH "EXAMPLES"
+Check the status of a running workflow:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-status\.sh
+.fi
+.IP "" 0
+.P
+Use in a polling loop:
+.IP "" 4
+.nf
+while record\-status\.sh 2>/dev/null; do
+    sleep 30
+done
+echo "Workflow finished\."
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file identifying the running workflow process\. Removed if the recorded process is no longer alive\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBexit \-1\fR is used for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+The \fB/proc/<pid>\fR liveness check is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+\fB$RECORD_PID_FILE\fR is unquoted in the \fBrm\fR call; a path containing spaces or metacharacters may cause unexpected behaviour\.
+.P
+\fBpidtree\fR uses \fBdeclare \-A\fR associative arrays, requiring bash 4\.0 or later\. It will fail silently on bash 3\.x (the default on macOS)\.
+.P
+\fBps \-\-no\-headers\fR is a GNU \fBps\fR option and is not portable to macOS or BSD systems, which use \fBps \-o\fR with a custom format to suppress headers\.
+.P
+The stale PID file is silently removed when the program is found not to be running\. This is a side effect of a read\-only status query and may interfere with other tools that check for the PID file's existence, such as \fBrecord\-start\.sh\fR's duplicate\-run guard\.
+.P
+If a PID in the tree has already exited between the \fBpidtree\fR call and the \fBps\fR call, \fBps\fR will produce no output for that PID without any error, so the listing may be incomplete for short\-lived child processes\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\-start\.sh\fR, \fBrecord\-stop\.sh\fR, \fBrecord\-edit\.sh\fR, \fBrecord\-errors\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a process\-level status view of a running workflow, listing all processes in the workflow tree using their full \fBps \-f\fR details\.

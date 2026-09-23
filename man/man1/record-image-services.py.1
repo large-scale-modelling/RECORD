@@ -1,0 +1,77 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-IMAGE\-SERVICES\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-image\-services\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-image\-services\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-image\-services\.py\fR queries the RECORD provenance database and produces a Graphviz DOT file visualising service\-level metadata \(em applications, the computers they run on, and the specifications that define them\. It is a narrower counterpart to \fBrecord\-image\-project\.py\fR and \fBrecord\-image\-provenance\.py\fR, focused specifically on the infrastructure and software side of the provenance graph rather than people, studies, or statistical entities\.
+.P
+The script connects to the database via the \fBssrepi\fR library, calls \fBssrepi\.draw_graph\fR with a fixed set of entity types and their label fields, and writes the result to \fBservices\.dot\fR in the current working directory\.
+.P
+The graph includes the following entity types, labelled by the specified field:
+.TS
+allbox;
+l l.
+Entity type	Label field
+\fBApplications\fR	\fBname\fR
+\fBComputers\fR	\fBID_COMPUTER\fR
+\fBSpecifications\fR	\fBID_SPECIFICATION\fR
+.TE
+.P
+The resulting \fBservices\.dot\fR file can be rendered to an image using Graphviz, for example with \fBdot \-Tpng services\.dot \-o services\.png\fR\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. The entity types, label fields, and output path are all hard\-coded\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fBssrepi\fR library cannot be imported from \fBlib/\fR; or
+.IP "\(bu" 4
+a database connection or query error occurs\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBssrepi\fR library\. Refer to \fBssrepi\.py\fR for the full list\.
+.SH "RETURN VALUE"
+Writes the Graphviz DOT representation of the services metadata graph to \fBservices\.dot\fR in the current working directory\. Any existing \fBservices\.dot\fR will be overwritten without warning\.
+.SH "EXAMPLES"
+Generate the services graph and render it to PNG:
+.IP "" 4
+.nf
+record\-image\-services\.py
+dot \-Tpng services\.dot \-o services\.png
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/ssrepi\.py\fR
+The SSREPI provenance library\. Must be importable as \fBssrepi\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBssrepi\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.TP
+\fBservices\.dot\fR
+Output Graphviz DOT file written to the current working directory\. Overwritten on each run without warning\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+This script imports \fBssrepi\fR rather than \fBrecord\fR, unlike most other scripts in the RECORD suite (with the exception of \fBrecord\-image\-provenance\.py\fR, which has the same inconsistency)\. It is unclear whether this is intentional (the script predates the renaming of the library from SSREPI to RECORD) or an oversight\.
+.P
+The output path \fBservices\.dot\fR, the entity types, and the label fields are all hard\-coded and cannot be changed without editing the script\.
+.P
+Any existing \fBservices\.dot\fR in the current working directory is silently overwritten\.
+.P
+The \fB__credits__\fR field is empty\.
+.P
+The graph as configured contains no edges between \fBApplications\fR, \fBComputers\fR, and \fBSpecifications\fR unless \fBssrepi\.draw_graph\fR derives relationships automatically from foreign keys; the script itself supplies no explicit relationship information\.
+.P
+The word "services" in the module comment is misspelled as "serivces"\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBssrepi\.py\fR, \fBrecord\.py\fR, \fBrecord\-image\-project\.py\fR, \fBrecord\-image\-provenance\.py\fR, \fBrecord\-documentation\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD/SSREPI workflow tools to produce a Graphviz visualisation focused on service\-level metadata: the applications, computers, and specifications that make up the infrastructure side of a provenance record\.

@@ -1,0 +1,135 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-GET\-ARGUMENTS\.JL" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\-get\-arguments\.jl\fR
+.SH "SYNOPSIS"
+\fBrecord\-get\-arguments\.jl\fR [\fIoptions\fR] \fB\-\-\fR \fIcommand\fR [\fIargs\fR\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-get\-arguments\.jl\fR is a Julia pre\-processor that inspects a command invocation and generates the RECORD provenance boilerplate needed to record it in a workflow script\. Given a command and its arguments after the \fB\-\-\fR separator, it produces two types of output:
+.P
+To \fBstandard output\fR, it emits a shell fragment of \fB\-\-record\-argument\-*\fR, \fB\-\-record\-stdout\-*\fR, \fB\-\-record\-stderr\-*\fR, and related flags that can be assigned to a \fB$ARGS\fR variable and passed to \fBrecord_run\fR in a RECORD workflow script\.
+.P
+To two \fBlibrary files\fR, it writes the \fBrecord_argument_type\fR and \fBrecord_output_box_type\fR shell function calls that must be sourced once to register the argument and output types for the command in the provenance database\. By default these files are named \fBlib\.\fR\fIcommand\fR\fB\.argument\-types\.sh\fR and \fBlib\.\fR\fIcommand\fR\fB\.output\-types\.sh\fR in the current working directory; alternative paths can be supplied via \fB\-\-argument\-types\-library\fR and \fB\-\-output\-types\-library\fR\.
+.P
+The script parses the passthrough command arguments heuristically, handling Unix long options (\fB\-\-flag\fR, \fB\-\-option=value\fR, \fB\-\-option value\fR), Unix short options (\fB\-f\fR, \fB\-o value\fR), MSDOS\-style switches (\fB/S\fR, \fB/S:value\fR), and shell redirections (\fB>\fR, \fB>>\fR, \fB2>\fR, \fB2>>\fR, \fB2>&1\fR)\. Positional arguments are detected by read\-ahead: if a token does not start with a recognised prefix and the preceding argument could take a value, the token is treated as the option's value; otherwise it is classified as a positional (required) argument\.
+.P
+When ambiguity exists \(em for example when \fB\-i input\.dat\fR could be either an option with a value or a flag followed by a positional \(em the script notes the ambiguity and, unless \fB\-\-suppress\-alternatives\fR is set, both interpretations are presented\.
+.P
+All argument classification takes place before any provenance output is written\. The first token after \fB\-\-\fR is treated as the executable name (\fIcommand\fR) and must be findable on \fBPATH\fR; the script aborts if it is not\.
+.SH "OPTIONS"
+Options must appear \fBbefore\fR the \fB\-\-\fR separator\. Everything after \fB\-\-\fR is treated as the command to be analysed\.
+.TP
+\fB\-\-help\fR, \fB\-H\fR
+Print a usage summary and exit with status 0\.
+.TP
+\fB\-\-version\fR, \fB\-V\fR
+Print the version number and exit with status 0\.
+.TP
+\fB\-\-debug\fR, \fB\-D\fR
+Enable debug logging to standard error\.
+.TP
+\fB\-\-assignment\-operator\fR \fIvalue\fR, \fB\-\-assignment\-operator=\fR\fIvalue\fR, \fB\-a\fR \fIvalue\fR, \fB\-a=\fR\fIvalue\fR
+Override the assignment operator used to split option names from their values in the passthrough arguments\. Useful when the target command uses a non\-standard separator such as \fB:\fR\.
+.TP
+\fB\-\-unix\-flags\fR, \fB\-U\fR
+Treat single\-hyphen options as a run of single\-letter flags (Unix style)\. When set, \fB\-ABC\fR is interpreted as three flags \fB\-A\fR, \fB\-B\fR, \fB\-C\fR, and the assignment operator is assumed to be \fB=\fR\.
+.TP
+\fB\-\-suppress\-alternatives\fR, \fB\-S\fR
+Suppress the display of alternative interpretations when argument classification is ambiguous\. The default interpretation is used silently\.
+.TP
+\fB\-\-argument\-types\-library\fR \fIfile\fR, \fB\-\-argument\-types\-library=\fR\fIfile\fR, \fB\-l\fR \fIfile\fR, \fB\-l=\fR\fIfile\fR
+Write the \fBrecord_argument_type\fR stubs to \fIfile\fR instead of the default \fBlib\.\fR\fIcommand\fR\fB\.argument\-types\.sh\fR\.
+.TP
+\fB\-\-output\-types\-library\fR \fIfile\fR, \fB\-\-output\-types\-library=\fR\fIfile\fR, \fB\-o\fR \fIfile\fR, \fB\-o=\fR\fIfile\fR
+Write the \fBrecord_output_box_type\fR stubs to \fIfile\fR instead of the default \fBlib\.\fR\fIcommand\fR\fB\.output\-types\.sh\fR\.
+.TP
+\fB\-\-run\fR, \fB\-R\fR
+After generating the provenance boilerplate, actually execute the passthrough command\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns 2 (via \fBdie\fR) if a required option value is missing, if an unknown option is encountered before \fB\-\-\fR, if a positional argument appears before \fB\-\-\fR, or if the \fIcommand\fR after \fB\-\-\fR is not found on \fBPATH\fR\.
+.SH "ENVIRONMENT"
+No environment variables are used directly\.
+.SH "RETURN VALUE"
+None\. Results are written to standard output and to the two library files\.
+.SH "EXAMPLES"
+Generate provenance boilerplate for a simple Python script invocation:
+.IP "" 4
+.nf
+record\-get\-arguments\.jl \-\- prog\.py \e
+    \-\-out\-file=dougs\.file \e
+    \-on\-flag \e
+    \-A \e
+    \-i input_path\.dat \e
+    "pickling times are fun times" \e
+    2>&1 > dougs\.out
+.fi
+.IP "" 0
+.P
+This produces on standard output:
+.IP "" 4
+.nf
+$ARGS="""$ARGS
+\-\-record\-argument\-${a_prog\.py_i_id}=input_path\.dat
+\-\-record\-argument\-${a_prog\.py_out\-file_id}=dougs\.file
+\-\-record\-argument\-${a_prog\.py_A_id}
+\-\-record\-argument\-${a_prog\.py_on_flag_id}
+\-\-record\-stdout\-${o_prog\.py_stdout_id}=dougs\.out
+"""
+.fi
+.IP "" 0
+.P
+And writes \fBrecord_argument_type\fR and \fBrecord_output_box_type\fR stubs to \fBlib\.prog\.py\.argument\-types\.sh\fR and \fBlib\.prog\.py\.output\-types\.sh\fR respectively\.
+.P
+Use a custom assignment operator for a command that uses \fB:\fR as a separator:
+.IP "" 4
+.nf
+record\-get\-arguments\.jl \-\-assignment\-operator=: \-\- mycommand /S:value
+.fi
+.IP "" 0
+.P
+Treat single\-hyphen options as individual flags:
+.IP "" 4
+.nf
+record\-get\-arguments\.jl \-\-unix\-flags \-\- prog \-ABC \-\-option=val
+.fi
+.IP "" 0
+.SH "OUTPUT FILES"
+.TP
+\fBlib\.\fR\fIcommand\fR\fB\.argument\-types\.sh\fR
+Shell script fragment containing \fBrecord_argument_type\fR calls for each argument detected in the passthrough command\. Written to the current working directory unless overridden by \fB\-\-argument\-types\-library\fR\. Each call includes a placeholder description, the inferred type (\fBoption\fR, \fBflag\fR, or \fBrequired\fR), the argument name, and where applicable the assignment operator, range regex, arity, and order value\. Descriptions must be filled in manually before use\.
+.TP
+\fBlib\.\fR\fIcommand\fR\fB\.output\-types\.sh\fR
+Shell script fragment containing \fBrecord_output_box_type\fR calls for each redirection detected in the passthrough command\. Written to the current working directory unless overridden by \fB\-\-output\-types\-library\fR\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fB\-\-assignment\-operator\fR and \fB\-\-argument\-types\-library\fR option parsers call \fBsplit(a, "=", limit=2)\fR unconditionally before checking whether \fB=\fR is present, then reference the undefined local variable \fBval\fR (instead of \fBvalue\fR) when testing for \fBnothing\fR\. This will raise an \fBUndefVarError\fR at runtime whenever these options are used\.
+.P
+The same \fBval\fR vs \fBvalue\fR bug affects the \fB\-a=\fR, \fB\-l=\fR, and \fB\-o=\fR short option handlers\.
+.P
+The \fB\-\-run\fR / \fB\-R\fR flag is recognised and sets \fBexecute = true\fR in \fBparse_before_double_dash\fR, but the return tuple from that function omits \fBexecute\fR, so \fBmain\fR never receives it and the flag has no effect\.
+.P
+The \fBparse_before_double_dash\fR return statement when \fB\-\-\fR is not found returns \fBassignment_operator\fR and \fBsuppress\fR in swapped positions compared to the return statement when \fB\-\-\fR is found, meaning the caller will silently assign the wrong values to these variables when \fB\-\-\fR is absent\.
+.P
+In the passthrough parser, the \fB>\fR (stdout redirect) branch contains a syntax error: \fBname =\fR appears on a line by itself with no right\-hand side, which will cause a parse error at load time\.
+.P
+In several branches the local variable \fBassingment\fR (a typo of \fBassignment\fR) is assigned rather than \fBassignment\fR, silently discarding the space assignment operator for these cases\.
+.P
+The \fBidentifier\fR variable is referenced in the \fBrequired\fR argument output inside \fBpreprocessor\fR but is never assigned a value in \fBmain\fR, so it will always be \fBnothing\fR in the generated output\.
+.P
+The \fB\-\-suppress\-alternatives\fR option is spelled \fB\-\-suppress\-alterantives\fR (transposed letters) in the help text, which does not match the \fB\-\-suppress\-alternatives\fR spelling used in the parser\.
+.P
+The library files are opened in append mode (\fB"a"\fR), meaning repeated invocations accumulate duplicate entries rather than overwriting the previous output\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.sh\fR, \fBrecord_argument_type\fR, \fBrecord_output_box_type\fR, \fBrecord\-get\-io\.jl\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to reduce the manual effort of writing provenance boilerplate for existing commands, by automatically inferring argument types and redirection outputs from a representative command invocation and generating the corresponding \fBrecord_argument_type\fR and \fBrecord_output_box_type\fR registration stubs\.

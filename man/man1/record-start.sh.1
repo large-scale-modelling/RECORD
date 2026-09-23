@@ -1,0 +1,85 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-START\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-start\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-start\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-start\.sh\fR launches \fBRECORD_START_PROGRAM\fR as a detached background process and records its PID for use by other RECORD workflow tools\. It sources \fBlib\.record\.common\.sh\fR, which validates the environment and checks the PID file before any action is taken\.
+.P
+If \fBRECORD_START_PROGRAM\fR is already running (determined by the presence of a valid PID in the PID file and a live \fB/proc/<pid>\fR entry), the script writes a timestamped error to standard error and exits with status \-1 without starting a second instance\.
+.P
+Otherwise the script launches \fBRECORD_START_PROGRAM\fR under \fBnohup\fR, redirecting both stdout and stderr to a datestamped output file named \fB$RECORD_START_PROGRAM\.<YYYY\-MM\-DD>\.out\fR in the current working directory\. The PID of the background process is written to \fBRECORD_PID_FILE\fR, and a confirmation message is written to standard error\.
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables\.
+.SH "EXIT STATUS"
+Returns 0 if \fBRECORD_START_PROGRAM\fR is launched successfully\.
+.P
+Returns \-1 (typically 255) if \fBRECORD_START_PROGRAM\fR is already running\.
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time (see \fBlib\.record\.common\.sh\fR documentation)\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The program to launch\. Must be set and resolve to an executable on \fBPATH\fR\. Validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\. Written with the PID of the launched process on success\.
+.SH "EXAMPLES"
+Start a workflow program:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-start\.sh
+.fi
+.IP "" 0
+.P
+Start and then monitor for errors:
+.IP "" 4
+.nf
+record\-start\.sh
+sleep 60
+record\-errors\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file written with the PID of the launched process\. Used by \fBrecord\-stop\.sh\fR, \fBrecord\-edit\.sh\fR, and \fBrecord\-errors\.sh\fR to locate the running process\.
+.TP
+\fB$RECORD_START_PROGRAM\.<YYYY\-MM\-DD>\.out\fR
+Datestamped output file written in the current working directory, capturing both stdout and stderr of the launched process\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBexit \-1\fR is used for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+The \fB/proc/<pid>\fR check is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+\fB$RECORD_START_PROGRAM\fR and \fB$RECORD_PID_FILE\fR are unquoted throughout; values containing spaces or shell metacharacters may cause unexpected behaviour\.
+.P
+If two instances of \fBrecord\-start\.sh\fR are invoked simultaneously and the PID file does not yet exist, both may pass the running check and launch duplicate instances of \fBRECORD_START_PROGRAM\fR, with the second \fBecho $! > $RECORD_PID_FILE\fR silently overwriting the first\.
+.P
+If \fBRECORD_START_PROGRAM\fR is run multiple times on the same date, each run appends to the same datestamped \fB\.out\fR file rather than creating a new one, as \fB>\fR is used but stdout and stderr from successive runs will be interleaved without any separator\.
+.P
+The PID file is written after \fBnohup\fR returns the background PID, but there is no check that \fBRECORD_START_PROGRAM\fR actually started successfully\. If it exits immediately, the PID file will contain a stale PID and subsequent tools will behave as if the program is still running until the PID is recycled by the OS\.
+.P
+The confirmation message is written to standard error rather than standard output, which is consistent with the rest of the RECORD tools but means it will be suppressed if stderr is redirected\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\-stop\.sh\fR, \fBrecord\-edit\.sh\fR, \fBrecord\-errors\.sh\fR, \fBrecord\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a standardised launch wrapper for workflow programs, capturing output to a datestamped file and registering the process PID for use by other tools in the RECORD suite\.

@@ -1,0 +1,104 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-STOP\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-stop\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-stop\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-stop\.sh\fR terminates a running RECORD workflow, optionally including any associated Slurm jobs\. It sources \fBlib\.record\.common\.sh\fR and operates in two phases:
+.P
+\fBPhase 1 \(em Slurm cancellation (optional):\fR
+.P
+If \fBRECORD_SLURM\fR is set, the script queries the Slurm queue with \fBsqueue\fR and cancels all jobs whose names match the prefix \fBRECORD_SLURM_PREFIX\.*\fR using \fBscancel\fR\.
+.P
+\fBPhase 2 \(em Process termination:\fR
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is running\fR (the PID file exists and \fB/proc/<pid>\fR is present), the script uses \fBpidtree\fR to enumerate the full process subtree rooted at the recorded PID and sends \fBSIGKILL\fR (\fBkill \-9\fR) to every process in the tree\. The PID file is then removed\.
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is not running\fR (the PID file is absent or the process no longer exists), a timestamped message is written to standard error and the script exits with status \-1\.
+.IP "" 0
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables\.
+.SH "EXIT STATUS"
+Returns 0 if the process tree was successfully killed and the PID file removed\.
+.P
+Returns \-1 (typically 255) if:
+.IP "\(bu" 4
+the PID file does not exist; or
+.IP "\(bu" 4
+the process recorded in the PID file is no longer running\.
+.IP "" 0
+.P
+Returns non\-zero if \fBlib\.record\.common\.sh\fR validation fails at source time (see \fBlib\.record\.common\.sh\fR documentation)\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the workflow program to stop\. Set and validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\.
+.TP
+\fBRECORD_SLURM\fR
+When set (to any non\-empty value), enables Slurm job cancellation in phase 1\. If unset or empty, the Slurm phase is skipped\.
+.TP
+\fBRECORD_SLURM_PREFIX\fR
+The job name prefix used to identify Slurm jobs belonging to this workflow\. All jobs returned by \fBsqueue\fR whose names match \fBRECORD_SLURM_PREFIX\.*\fR will be cancelled\. Only used when \fBRECORD_SLURM\fR is set\.
+.SH "EXAMPLES"
+Stop a running workflow:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-stop\.sh
+.fi
+.IP "" 0
+.P
+Stop a workflow and cancel its associated Slurm jobs:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+export RECORD_SLURM=1
+export RECORD_SLURM_PREFIX=my_sim
+record\-stop\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file written by the workflow run\. Read to identify the process tree to kill, then removed on success\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBkill \-9\fR (\fBSIGKILL\fR) is sent to every process in the tree without first attempting a graceful shutdown with \fBSIGTERM\fR\. This prevents the workflow from performing any cleanup (flushing buffers, releasing locks, writing final provenance records) before termination\.
+.P
+\fBexit \-1\fR is used for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+The \fBLOGIN_PID=\fR assignment inside the running branch is empty and unused, suggesting incomplete logic that was never finished\.
+.P
+\fBpidtree\fR uses \fBdeclare \-A\fR associative arrays, requiring bash 4\.0 or later\. It will fail silently on bash 3\.x (the default on macOS)\.
+.P
+The \fB/proc/<pid>\fR check used to determine whether the process is running is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+\fB$RECORD_PID_FILE\fR and \fB$RECORD_SLURM_PREFIX\fR are unquoted in several places; values containing spaces or shell metacharacters may cause unexpected behaviour\.
+.P
+The Slurm \fBgrep\fR pattern \fB$RECORD_SLURM_PREFIX'\.*'\fR concatenates a shell variable with a literal \fB\.*\fR, which is a basic regular expression passed to \fBgrep\fR\. If \fBRECORD_SLURM_PREFIX\fR is unset, all jobs in the queue will be matched and cancelled\.
+.P
+If any \fBkill \-9\fR call fails (e\.g\. due to a permissions error or a PID that has already exited), the error is silently ignored and the loop continues\. The PID file is still removed regardless of whether all kills succeeded\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\.sh\fR, \fBrecord\-edit\.sh\fR, \fBrecord\-errors\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a single command for halting a running workflow and optionally cancelling its associated Slurm batch jobs\.

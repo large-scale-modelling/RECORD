@@ -1,0 +1,95 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-TRUNCATE\-DATABASE\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-truncate\-database\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-truncate\-database\.py\fR \fB\-\-force\fR
+.SH "DESCRIPTION"
+\fBrecord\-truncate\-database\.py\fR removes all rows from every table in the RECORD provenance database without dropping the schema\. It is a destructive maintenance utility and requires explicit confirmation via \fB\-\-force\fR before any write is performed\.
+.P
+The script is only meaningful for relational backends\. If \fBRECORD_DBTYPE\fR is \fBgremlin\fR, the script exits with an advisory message directing the user to \fBdelete\-database\.py\fR instead, as truncation is not a applicable concept for a graph database\.
+.SH "OPTIONS"
+.TP
+\fB\-\-force\fR
+Required\. Instructs the script to proceed with truncation\. Without this flag the script prints a refusal message to standard error and exits with status 1\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns 1 if:
+.IP "\(bu" 4
+\fB\-\-force\fR is not supplied; or
+.IP "\(bu" 4
+\fBRECORD_DBTYPE\fR is \fBgremlin\fR (advisory exit, no truncation attempted)\.
+.IP "" 0
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fBrecord\fR library cannot be imported from \fBlib/\fR; or
+.IP "\(bu" 4
+a database error occurs during \fBempty_tables\fR, \fBconnect_db\fR, or \fBdisconnect_db\fR\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\. If set to \fBgremlin\fR, truncation is skipped and an advisory message is printed\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+This script produces no output on success\. Diagnostic messages are written to standard error when debug mode is active or when truncation is refused\.
+.SH "EXAMPLES"
+Truncate all tables in the database:
+.IP "" 4
+.nf
+record\-truncate\-database\.py \-\-force
+.fi
+.IP "" 0
+.P
+Attempt truncation without confirmation (will be refused):
+.IP "" 4
+.nf
+record\-truncate\-database\.py
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be importable as \fBrecord\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBrecord\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+Gary Polhill, Lorenzo Milazzo
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Debug output is unconditionally enabled by \fBrecord\.debug = True\fR at module level in \fBrecord\.py\fR and cannot be suppressed via the \fBRECORD_DEBUG\fR environment variable\.
+.P
+When \fBRECORD_DBTYPE\fR is \fBgremlin\fR the script writes the advisory message to standard error but exits with status 0 rather than a non\-zero status, making it indistinguishable from a successful truncation in automated pipelines\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-documentation\.py\fR, \fBdelete\-database\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a safe, confirmation\-gated command\-line interface for clearing all provenance data from the relational backends (SQLite and PostgreSQL) used by the RECORD workflow system\.

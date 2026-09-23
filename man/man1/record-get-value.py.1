@@ -1,0 +1,131 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-GET\-VALUE\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-get\-value\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-get\-value\.py \-\-table=\fR\fITableName\fR \fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR [\|\.\|\.\|\.] \fB\-\-\fR\fItarget_column\fR
+.SH "DESCRIPTION"
+\fBrecord\-get\-value\.py\fR retrieves a single field value from a record in the RECORD provenance database\. It is used by \fBrecord\.sh\fR to look up stored attributes of entities \(em such as the location of a registered application or the separator character for a named argument \(em so that those values can be used to construct subsequent commands\.
+.P
+The script takes a mandatory \fB\-\-table\fR argument, one or more \fB\-\-column=value\fR arguments that identify the record to retrieve (acting as lookup keys), and a final bare \fB\-\-column\fR argument (without a value) that names the field whose content is to be returned\. The identified record is fetched from the database via the \fBquery\fR method of the corresponding entity class, and the value of the target field is printed to standard output\.
+.P
+Column validation is performed differently depending on the backend: for Gremlin the column name is checked against the entity class's in\-memory attribute dictionary; for SQLite and PostgreSQL the column name is verified by querying the live database schema via \fBPRAGMA TABLE_INFO\fR or \fBinformation_schema\.columns\fR respectively\.
+.SH "OPTIONS"
+.TP
+\fB\-\-table=\fR\fITableName\fR
+Required\. The entity class to query\. \fITableName\fR is case\-sensitive and must match a class defined in \fBrecord\.py\fR exactly (for example \fBApplication\fR, \fBBox\fR, \fBArgument\fR, \fBProcess\fR)\.
+.TP
+\fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR
+Supplies a field value used to identify the record\. Multiple such arguments may be given; together they must provide enough information to populate the primary key so that \fBquery\fR can locate a unique row\. Column names are matched case\-insensitively\.
+.TP
+\fB\-\-\fR\fItarget_column\fR
+Required\. A bare flag (no \fB=value\fR part) naming the field whose value is to be printed\. Must appear after all \fB\-\-column=value\fR arguments\. Only one target column may be specified per invocation; if more than one bare column flag is supplied, only the last one encountered is used as the target\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fB\-\-table\fR argument is missing or names an unknown class;
+.IP "\(bu" 4
+no \fB\-\-column=value\fR lookup arguments are supplied;
+.IP "\(bu" 4
+a column name is not valid for the named entity class;
+.IP "\(bu" 4
+the database query fails; or
+.IP "\(bu" 4
+an unexpected error occurs during column name validation\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\. Controls how column names are validated\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+Prints the value of the target field to standard output\. If the field value is \fBNone\fR the string \fBNone\fR is printed\.
+.SH "EXAMPLES"
+Retrieve the \fBlocation\fR field of a registered application:
+.IP "" 4
+.nf
+id_box=$(record\-get\-value\.py \e
+    \-\-table=Application \e
+    \-\-id_application=application_12345 \e
+    \-\-location)
+.fi
+.IP "" 0
+.P
+Retrieve the \fBlocation_value\fR field of a box:
+.IP "" 4
+.nf
+executable=$(record\-get\-value\.py \e
+    \-\-table=Box \e
+    \-\-id_box="$id_box" \e
+    \-\-location_value)
+.fi
+.IP "" 0
+.P
+Retrieve the \fBseparator\fR for a named argument:
+.IP "" 4
+.nf
+sep=$(record\-get\-value\.py \e
+    \-\-table=Argument \e
+    \-\-application=application_12345 \e
+    \-\-id_argument=argument_input_file \e
+    \-\-separator)
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be present in a \fBlib\fR subdirectory relative to the working directory, or otherwise on the Python path\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBtable_parameter\fR regex will raise an \fBAttributeError\fR rather than skipping gracefully if any argument in \fBsys\.argv\fR does not match the \fB\-\-table=\fR pattern, because \fBre\.match\fR returns \fBNone\fR for non\-matching strings and \fBNone\.groups()\fR is called unconditionally\.
+.P
+The error message for a missing \fB\-\-table\fR argument reads \fB"No \-\-class argument supplied"\fR rather than \fB"No \-\-table argument supplied"\fR, which is misleading\.
+.P
+The \fBtarget\fR variable is assigned inside the argument\-parsing loop but is referenced unconditionally in the return statement\. If no bare column argument is supplied, \fBtarget\fR will be undefined and the script will raise a \fBNameError\fR rather than a descriptive \fBIllegalArgumentError\fR\.
+.P
+The bare \fBexcept: raise\fR in \fB__main__\fR discards exception context and offers no additional diagnostic information beyond what the original exception already provides\.
+.P
+The broad \fBexcept: raise IllegalArgumentError(\|\.\|\.\|\.)\fR in the relational column\-validation branch will mask any underlying database error (such as a connection failure or a malformed query) with the generic message \fB"Unexpected error for querying column"\fR, making diagnosis difficult\.
+.P
+\fBsqlite3\fR is imported unconditionally at the top of the script regardless of the value of \fBRECORD_DBTYPE\fR, which will cause an import error on systems where the \fBsqlite3\fR module is unavailable even when the backend is configured as \fBpostgres\fR or \fBgremlin\fR\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBupdate\.py\fR, \fBexists\.py\fR, \fBsearch\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a command\-line interface for reading individual field values out of the provenance database, supporting the argument\-resolution and file\-tracking operations performed by \fBrecord\.sh\fR\.

@@ -1,0 +1,37 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-DELETE\-DATABASE\.PY" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\-delete\-database\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-delete\-database\.py \-\-force\fR
+.SH "DESCRIPTION"
+\fBrecord\-delete\-database\.py\fR deletes all tables from the RECORD provenance database\.
+.P
+The command connects to the configured RECORD database, removes all tables, and then closes the database connection\.
+.P
+Because this operation permanently deletes all stored provenance data, the command requires the \fB\-\-force\fR option before performing the deletion\.
+.P
+If \fB\-\-force\fR is not supplied the program exits without modifying the database\.
+.SH "OPTIONS"
+.TP
+\fB\-\-force\fR
+perform the database deletion
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+RECORD database interface library
+.SH "EXIT STATUS"
+.TP
+0
+success
+.TP
+1
+deletion refused because \fB\-\-force\fR was not specified
+.TP
+non\-zero
+database connection or deletion failure
+.SH "ENVIRONMENT"
+Database connection parameters are determined by the RECORD configuration used by the \fBrecord\fR Python module\.
+.SH "SEE ALSO"
+\fBrecord\-export\-database(1)\fR, \fBrecord\-clean(1)\fR, \fBrecord\-mr\-proper(1)\fR

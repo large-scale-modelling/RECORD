@@ -1,0 +1,91 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-EDIT\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-edit\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-edit\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-edit\.sh\fR opens the current or most recent output of \fBRECORD_START_PROGRAM\fR in \fBvi\fR for inspection or editing\. It sources \fBlib\.record\.common\.sh\fR and uses the PID file and process state to determine which file to open:
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is running\fR (the PID file exists and \fB/proc/<pid>\fR is present), the script resolves the program's current standard error file descriptor via \fBget_stderr\fR and opens it in \fBvi\fR\. This allows live inspection of a running workflow's stderr output\.
+.IP "\(bu" 4
+\fBIf \fBRECORD_START_PROGRAM\fR is not running\fR (the PID file is absent or the process is no longer alive), the script opens the most recent output file matching the glob \fB$RECORD_START_PROGRAM\.????\-??\-??\.out\fR in \fBvi\fR\. A message is written to standard error noting that the program is not running\.
+.IP "" 0
+.SH "OPTIONS"
+This script accepts no options or arguments\. All configuration is supplied via environment variables inherited from \fBlib\.record\.common\.sh\fR\.
+.SH "EXIT STATUS"
+Returns 0 if the program is running and \fBvi\fR exits successfully\.
+.P
+Returns \-1 (typically 255) if:
+.IP "\(bu" 4
+the PID file does not exist; or
+.IP "\(bu" 4
+the process is no longer running\.
+.IP "" 0
+.P
+Note that in both failure cases \fBvi\fR is still launched before the script exits, so the exit status reflects the state \fIafter\fR \fBvi\fR closes\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_START_PROGRAM\fR
+The name of the workflow program being monitored\. Used to locate the PID file and to glob for output files\. Set and validated by \fBlib\.record\.common\.sh\fR at source time\.
+.TP
+\fBRECORD_DBTYPE\fR
+Used by \fBlib\.record\.common\.sh\fR to construct the PID file path\.
+.TP
+\fBRECORD_PID_FILE\fR
+Path to the PID file, exported by \fBlib\.record\.common\.sh\fR as \fB/tmp/record\.$USER\.$RECORD_DBTYPE\.$RECORD_START_PROGRAM\.pid\fR\.
+.SH "EXAMPLES"
+Open the stderr of a currently running workflow:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-edit\.sh
+.fi
+.IP "" 0
+.P
+Open the most recent output file of a completed workflow:
+.IP "" 4
+.nf
+export RECORD_START_PROGRAM=my_sim
+export RECORD_DBTYPE=sqlite3
+record\-edit\.sh
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.record\.common\.sh\fR
+Common library sourced at startup\. Must be present in the working directory or on \fBPATH\fR\.
+.TP
+\fB/tmp/record\.<USER>\.<RECORD_DBTYPE>\.<RECORD_START_PROGRAM>\.pid\fR
+PID file written by the workflow run\. Read to determine whether \fBRECORD_START_PROGRAM\fR is currently running\.
+.TP
+\fB$RECORD_START_PROGRAM\.????\-??\-??\.out\fR
+Glob pattern used to find output files when the program is not running\. Matched in the current working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBexit \-1\fR is used for error exits\. POSIX does not guarantee the behaviour of negative exit codes; most shells interpret \fB\-1\fR as 255, but this is not portable\.
+.P
+In both non\-running branches, \fBvi\fR is launched before \fBexit \-1\fR is reached\. This means the script always opens an editor regardless of error state, which may be surprising in automated or non\-interactive contexts\.
+.P
+The glob \fB$RECORD_START_PROGRAM\.????\-??\-??\.out\fR is unquoted and may expand to nothing (or cause an error with \fBnullglob\fR unset) if no matching files exist in the current directory\. \fBvi\fR will then be invoked with a literal unexpanded glob string as its argument\.
+.P
+If the glob matches more than one file, \fBvi\fR will open all of them as a buffer list, which may or may not be the intended behaviour\.
+.P
+\fBget_stderr\fR relies on \fB/proc/<pid>/fd/2\fR, which is Linux\-specific and will not work on macOS or other non\-Linux systems\.
+.P
+The script checks for the existence of \fB/proc/<pid>\fR as a proxy for whether the process is running, which is Linux\-specific\. On systems without \fB/proc\fR, the live\-process branch will never be taken\.
+.P
+The \fBpid_of_record_run\fR variable is populated by \fBlib\.record\.common\.sh\fR only when the PID file already exists at source time\. If the PID file was created after sourcing the library, \fBpid_of_record_run\fR will be empty and the script will fall through to the not\-running branch even if the process is live\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBlib\.record\.common\.sh\fR, \fBrecord\.sh\fR, \fBrecord\-look\-for\-errors\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide convenient interactive access to the output of a running or recently completed workflow program\.

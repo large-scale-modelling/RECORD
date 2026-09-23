@@ -1,0 +1,138 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-IMPORT\-DATABASE\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-import\-database\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-import\-database\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-import\-database\.py\fR restores a Gremlin graph database from a JSON export file, loading all vertices first and then all edges\. It is the import counterpart to a graph export utility and is intended for use with the Gremlin backend of the RECORD provenance system\.
+.P
+The script uses \fBijson\fR to stream the input file in two passes \(em one for the \fBvertices\fR array and one for the \fBedges\fR array \(em so arbitrarily large exports can be imported without loading the entire file into memory\.
+.P
+Progress is reported to standard output every 1,000 successfully loaded vertices or edges\. Failures for individual vertices or edges are reported to standard error with the affected \fBT\.id\fR, and processing continues rather than aborting\. A summary of loaded and failed counts, together with the live vertex and edge counts returned by the graph, is printed at the end\.
+.P
+The script exits with status 2 if any vertex or edge failed to load, allowing calling scripts to detect a partial import\.
+.SH "OPTIONS"
+This script accepts no command\-line options\. All configuration is supplied via environment variables\.
+.SH "EXIT STATUS"
+Returns 0 if all vertices and edges were loaded successfully\.
+.P
+Returns 1 if the input JSON file does not exist\.
+.P
+Returns 2 if one or more vertices or edges failed to load\.
+.P
+Returns non\-zero if an unhandled exception occurs during connection or traversal setup\.
+.SH "ENVIRONMENT"
+.TP
+\fBSSREPI_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\. Defaults to \fBws://localhost:8182/gremlin\fR if not set\.
+.TP
+\fBGRAPH_JSON\fR
+Path to the JSON file to import\. Defaults to \fBgraph\.json\fR if not set\. The file must contain a top\-level \fBvertices\fR array and a top\-level \fBedges\fR array\. The script exits with status 1 if the file does not exist\.
+.TP
+\fBTRAVERSAL_SOURCE\fR
+Named traversal source to use when connecting to the Gremlin server\. Defaults to \fBg\fR if not set\.
+.SH "RETURN VALUE"
+On completion a restore summary is printed to standard output:
+.IP "" 4
+.nf
+=== RESTORE SUMMARY ===
+V loaded <n> fail <n>   graph V(): <n>
+E loaded <n> fail <n>   graph E(): <n>
+.fi
+.IP "" 0
+.P
+Progress lines are also printed to standard output every 1,000 successfully loaded vertices or edges:
+.IP "" 4
+.nf
+[V] 1000 loaded (fail 0)
+[E] 2000 loaded (fail 1)
+.fi
+.IP "" 0
+.P
+Individual failures are reported to standard error:
+.IP "" 4
+.nf
+[V] FAIL <T\.id>: <exception message>
+[E] FAIL <T\.id>: <exception message>
+.fi
+.IP "" 0
+.SH "EXAMPLES"
+Import using all defaults (localhost Gremlin server, \fBgraph\.json\fR):
+.IP "" 4
+.nf
+record\-import\-database\.py
+.fi
+.IP "" 0
+.P
+Import from a specific file against a remote server:
+.IP "" 4
+.nf
+SSREPI_GREMLIN_HOST=ws://gremlin\.example\.com:8182/gremlin \e
+GRAPH_JSON=/backups/provenance\-2024\.json \e
+record\-import\-database\.py
+.fi
+.IP "" 0
+.P
+Check for partial failures in a pipeline:
+.IP "" 4
+.nf
+record\-import\-database\.py || echo "Import completed with errors"
+.fi
+.IP "" 0
+.SH "INPUT FORMAT"
+The JSON file must be structured as:
+.IP "" 4
+.nf
+{
+  "vertices": [
+    { "T\.id": "\|\.\|\.\|\.", "T\.label": "\|\.\|\.\|\.", "<property>": "<value>", \|\.\|\.\|\. },
+    \|\.\|\.\|\.
+  ],
+  "edges": [
+    {
+      "T\.id": "\|\.\|\.\|\.",
+      "T\.label": "\|\.\|\.\|\.",
+      "Direction\.OUT": { "T\.id": "\|\.\|\.\|\." },
+      "Direction\.IN":  { "T\.id": "\|\.\|\.\|\." },
+      "<property>": "<value>",
+      \|\.\|\.\|\.
+    },
+    \|\.\|\.\|\.
+  ]
+}
+.fi
+.IP "" 0
+.P
+\fBT\.id\fR and \fBT\.label\fR are reserved keys\. All other keys on a vertex or edge object are treated as properties\. \fBDirection\.OUT\fR and \fBDirection\.IN\fR are required on every edge and must each contain a \fBT\.id\fR key identifying the source and target vertices respectively\.
+.SH "FILES"
+.TP
+\fBgraph\.json\fR
+Default input file\. Overridden by \fBGRAPH_JSON\fR\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+Gary Polhill, Lorenzo Milazzo
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The environment variable for the Gremlin host is named \fBSSREPI_GREMLIN_HOST\fR rather than \fBRECORD_GREMLIN_HOST\fR as used by the rest of the RECORD toolchain, which may cause confusion\.
+.P
+The script accepts no \fB\-\-help\fR or \fB\-\-version\fR flags, unlike the other RECORD utilities\.
+.P
+Edge failures do not increment \fBe_fail\fR before printing the failure message; the counter is only incremented in the \fBexcept\fR block, so the progress line \fB[E] FAIL \|\.\|\.\|\.\fR is printed correctly but the count reported in the summary may undercount failures if an exception is raised before the counter increment is reached\.
+.P
+The bare \fBexcept: pass\fR in the \fBfinally\fR block silently suppresses any error raised by \fBconn\.close()\fR, making connection cleanup failures invisible\.
+.P
+Property values are passed to Gremlin without type coercion\. If the JSON source contains numeric or boolean values serialised as strings, they will be stored as strings rather than their native types\.
+.P
+The script makes no attempt to detect or skip vertices or edges that already exist in the graph, so re\-running against a non\-empty graph will produce duplicate\-ID errors counted as failures rather than being handled as upserts\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-truncate\-database\.py\fR, \fBdelete\-database\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a streaming import path for restoring Gremlin graph databases from JSON exports produced by the RECORD workflow system\.

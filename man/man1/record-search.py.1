@@ -1,0 +1,128 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-SEARCH\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-search\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-search\.py\fR \fB\-\-table=\fR\fITableName\fR [\fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR\|\.\|\.\|\.] \fB\-\-\fR\fIcolumn_name\fR
+.SH "DESCRIPTION"
+\fBrecord\-search\.py\fR queries the RECORD provenance database for rows matching a set of column constraints and prints the values of a specified target column to standard output\. It is the search counterpart to \fBrecord\-update\.py\fR and \fBrecord\-get\-value\.py\fR\.
+.P
+The script takes a mandatory \fB\-\-table\fR argument identifying the entity class to query, followed by one or more \fB\-\-column=value\fR filter arguments, and a final bare \fB\-\-column\fR argument (without a value) identifying the column whose values should be returned\.
+.P
+Column names are matched case\-insensitively against the schema of the named entity class\. For relational backends (SQLite and PostgreSQL), column existence is verified against the live database schema\. For the Gremlin backend, column existence is verified against the entity class's instance attributes\.
+.P
+Results are printed one value per line\. If no matching rows are found, an empty line is printed\. For the Gremlin backend, the full entry representation is printed; for relational backends, the value of each matching column is printed\.
+.SH "OPTIONS"
+.TP
+\fB\-\-table=\fR\fITableName\fR
+Required\. The entity class to query\. \fITableName\fR is case\-sensitive and must match a class defined in \fBrecord\.py\fR exactly (for example \fBApplication\fR, \fBBox\fR, \fBProcess\fR, \fBPerson\fR, \fBPipeline\fR)\.
+.TP
+\fB\-\-\fR\fIcolumn_name\fR\fB=\fR\fIvalue\fR
+Constrains the search to rows where \fIcolumn_name\fR equals \fIvalue\fR\. Column names are matched case\-insensitively\. At least one column argument must be supplied\.
+.TP
+\fB\-\-\fR\fIcolumn_name\fR
+The column whose values are to be returned\. Specified as a bare flag without a value\. Must match a column defined on the named entity class\.
+.SH "EXIT STATUS"
+Returns 0 on success, including when no rows match (an empty line is printed)\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+the \fB\-\-table\fR argument is missing or names an unknown class;
+.IP "\(bu" 4
+no valid column arguments are supplied;
+.IP "\(bu" 4
+a column name does not exist on the named entity class; or
+.IP "\(bu" 4
+a database error occurs during connection or query\.
+.IP "" 0
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+Prints matching values to standard output, one per line\. Prints an empty line if no rows match\. For Gremlin backends, prints the full entry representation\.
+.SH "EXAMPLES"
+Search for all process IDs associated with a given application:
+.IP "" 4
+.nf
+record\-search\.py \e
+    \-\-table=Process \e
+    \-\-executable=application_12345 \e
+    \-\-id_process
+.fi
+.IP "" 0
+.P
+Search for all applications written in Python:
+.IP "" 4
+.nf
+record\-search\.py \e
+    \-\-table=Application \e
+    \-\-language=Python \e
+    \-\-name
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library\. Must be importable as \fBrecord\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBrecord\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "CREDITS"
+Gary Polhill, Lorenzo Milazzo
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Debug output is unconditionally enabled by \fBrecord\.debug = True\fR at module level and cannot be suppressed via the \fBRECORD_DEBUG\fR environment variable\.
+.P
+\fBbasename\fR is used in debug output but is never imported from \fBos\.path\fR\. All debug \fBsys\.stderr\.write\fR calls that reference \fBbasename(sys\.argv[0])\fR will raise a \fBNameError\fR at runtime whenever debug mode is active\.
+.P
+The \fBtable_parameter\fR regex is applied with \fB\.match(arg)\fR without first checking whether the result is \fBNone\fR; any argument that does not match the \fB\-\-table=\fR pattern will cause an \fBAttributeError\fR on \fB\.groups()\fR\. The same issue exists in the column\-parsing loop for \fBcolumn_parameter\.match(arg)\fR\.
+.P
+The bare \fBexcept: raise\fR in the column validation block swallows the original exception context, making it harder to diagnose unexpected database errors\.
+.P
+The \fBexcept: raise\fR in the \fBsearch\fR call similarly loses the original traceback context\.
+.P
+The \fBparameters\fR function verifies column existence by executing a schema query once per column argument rather than once per table, making it potentially slow for tables with many columns and many filter arguments\.
+.P
+The PostgreSQL column existence check uses \fBinformation_schema\.columns\fR without filtering by schema name, which may return false positives if multiple schemas contain tables with the same name\.
+.P
+The \fBtarget\fR variable is assigned inside the Gremlin branch when \fBcol_argument is None\fR, but is never used anywhere in the function, suggesting incomplete implementation of the target\-column selection logic for the Gremlin backend\.
+.P
+The \fB__license__\fR string contains a stray capital \fBG\fR in the word \fBthat\fR (\fB"in the hope thaGt it will be useful"\fR)\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-get\-value\.py\fR, \fBexists\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a command\-line interface for querying the provenance database by column constraints, supporting all three backends (SQLite, PostgreSQL, and Gremlin)\.

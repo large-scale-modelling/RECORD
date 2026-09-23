@@ -1,0 +1,57 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-EXPORT\-DATABASE\.PY" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\-export\-database\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-export\-database\.py\fR \fBoutput_file\fR
+.SH "DESCRIPTION"
+\fBrecord\-export\-database\.py\fR exports the configured RECORD database to the named output file\.
+.P
+If the configured database type is Gremlin, the command connects to the graph database, retrieves all vertices and edges, converts map keys to strings where needed, and writes the result as formatted JSON\.
+.P
+If the configured database type is not Gremlin, the command invokes \fBpg_dump\fR to create a PostgreSQL custom\-format backup in the named output file\.
+.SH "OPTIONS"
+.TP
+\fBoutput_file\fR
+path to the file to create
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if the database export fails, if the database connection cannot be made, or if \fBpg_dump\fR exits with an error\.
+.SH "ENVIRONMENT"
+The command uses the RECORD database configuration provided by the local Python \fBrecord\fR module\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Export a Gremlin database or PostgreSQL backup to the named file:
+.IP "" 4
+.nf
+record\-export\-database\.py export\.json
+.fi
+.IP "" 0
+.P
+Create a PostgreSQL custom\-format dump:
+.IP "" 4
+.nf
+record\-export\-database\.py backup\.dump
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+provides database configuration and connection handling
+.SH "AUTHORS"
+Doug Salt, Lorenzo Milazzo, Gary Polhill
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+For PostgreSQL exports the database name is currently fixed by the script\.
+.SH "COPYRIGHT"
+Copyright \(co 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBpg_dump\fR(1)
+.SH "HISTORY"
+Originally written to export Gremlin graph data as JSON\. Later extended to support PostgreSQL export through \fBpg_dump\fR and to accept the output file name as a command\-line parameter\.

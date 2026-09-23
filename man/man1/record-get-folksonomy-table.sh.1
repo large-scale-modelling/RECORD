@@ -1,0 +1,55 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-GET\-FOLKSONOMY\-TABLE\.SH" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-get\-folksonomy\-table\.sh\fR
+.SH "SYNOPSIS"
+\fBrecord\-get\-folksonomy\-table\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\-get\-folksonomy\-table\.sh\fR extracts the list of tag variable names from the folksonomy library at \fBexample/lib\.folksonomy\.sh\fR\. It finds all lines invoking \fBrecord_make_tag\fR, strips everything from the \fB=\fR sign onwards, and prints the resulting variable names to standard output \(em one per line\.
+.P
+The path to \fBexample/lib\.folksonomy\.sh\fR is hard\-coded; the script must be run from the root of the RECORD project directory\.
+.SH "OPTIONS"
+This script accepts no options or arguments\.
+.SH "EXIT STATUS"
+Returns 0 on success, or if no matches are found\.
+.P
+Returns non\-zero if \fBexample/lib\.folksonomy\.sh\fR does not exist or cannot be read\.
+.SH "EXAMPLES"
+List all folksonomy tag variable names:
+.IP "" 4
+.nf
+record\-get\-folksonomy\-table\.sh
+.fi
+.IP "" 0
+.P
+Use the output to drive further processing:
+.IP "" 4
+.nf
+record\-get\-folksonomy\-table\.sh | while read tag; do
+    echo "Processing $tag"
+done
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBexample/lib\.folksonomy\.sh\fR
+The folksonomy library file\. Path is hard\-coded relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The path \fBexample/lib\.folksonomy\.sh\fR is hard\-coded, so the script will silently produce no output or fail with a \fBgrep\fR error if run from any directory other than the RECORD project root\.
+.P
+The script accepts no \fB\-\-help\fR or \fB\-\-version\fR flags, unlike other RECORD utilities\.
+.P
+If \fBgrep\fR finds no matches it exits with status 1, which will propagate as a non\-zero exit from the script and may be misinterpreted as an error by calling scripts using \fBset \-e\fR\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBexample/lib\.folksonomy\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to extract the set of folksonomy tag identifiers defined in the example folksonomy library\.

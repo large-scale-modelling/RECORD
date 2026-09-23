@@ -1,0 +1,123 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "TRACE\.SH" "" "March 2026" ""
+.SH "NAME"
+\fBtrace\.sh\fR
+.SH "SYNOPSIS"
+\fBtrace\.sh\fR [\fIoptions\fR] \fIinput\.dot\fR \fIoutput\.dot\fR \fItoken\fR
+.SH "DESCRIPTION"
+\fBtrace\.sh\fR filters a Graphviz DOT file produced by the RECORD/SSRepI provenance tools, tracing a named entity forward through the directed graph and writing either a filtered subgraph or a coloured version of the full graph to an output file\.
+.P
+Given a DOT file and a target \fItoken\fR (a node identifier of the form \fBEntityType\.id\fR), \fBtrace\.sh\fR recursively follows all outgoing edges from that node, collecting the token and all of its descendants\. The result can be written as a new DOT file containing only those nodes and edges, or the original graph can be re\-emitted with the traced nodes and their descendants highlighted in red\.
+.P
+The set of entity types included in the trace can be narrowed using \fB\-\-include\fR or broadened back from an exclusion list using \fB\-\-exclude\fR\. These two options are mutually exclusive\.
+.P
+Recursive traversal is delegated to \fBtrace\-recurse\.sh\fR, which must be present on \fBPATH\fR\. A temporary file is used to accumulate results from the recursive calls before final output is produced\.
+.SH "OPTIONS"
+.TP
+\fB\-\-help\fR, \fB\-H\fR
+Print a usage summary and exit with status 0\.
+.TP
+\fB\-\-version\fR, \fB\-V\fR
+Print the program name and version number to standard error and exit with status 1\.
+.TP
+\fB\-\-colour\fR, \fB\-C\fR
+Instead of writing a filtered subgraph, re\-emit the full input graph with traced nodes and their descendants coloured red (\fBcolor = red, fontcolor = red\fR)\. The output file is built by processing every line of the input and adding colour attributes to lines that appear in the trace results\.
+.TP
+\fB\-\-affected\fR \fIfile\fR, \fB\-a\fR \fIfile\fR
+Write the list of affected entity identifiers (one per line, sorted and deduplicated) to \fIfile\fR\. Only node lines (not edge lines) from the trace results are included\. This can be used to enumerate entities downstream of a suspect input such as a bad dataset\.
+.TP
+\fB\-\-include\fR \fIEntityType\fR, \fB\-i\fR \fIEntityType\fR
+Restrict the trace to the named entity type\. May be repeated to include multiple types\. The entity type of \fItoken\fR must always be present in the include list\. Cannot be used together with \fB\-\-exclude\fR\.
+.TP
+\fB\-\-exclude\fR \fIEntityType\fR, \fB\-x\fR \fIEntityType\fR
+Exclude the named entity type from the trace\. May be repeated\. The entity type of \fItoken\fR cannot be excluded\. Cannot be used together with \fB\-\-include\fR\.
+.SH "ARGUMENTS"
+.TP
+\fIinput\.dot\fR
+Path to the input Graphviz DOT file to be filtered\. Must be the first positional parameter\.
+.TP
+\fIoutput\.dot\fR
+Path to the output DOT file to be written\. Must be the second positional parameter\.
+.TP
+\fItoken\fR
+The node identifier to trace, of the form \fBEntityType\.id\fR (for example \fBContainers\.container_505627104\fR)\. Must be the third positional parameter\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns \-1 if a required positional argument is missing, if the input file does not exist, if an \fB\-\-include\fR or \fB\-\-exclude\fR entity type is not present in the input graph, if the token's entity type is absent from the include list, or if the token's entity type appears in the exclude list\.
+.P
+Returns \-2 if both \fB\-\-include\fR and \fB\-\-exclude\fR are specified simultaneously\.
+.P
+Returns 1 if \fB\-\-version\fR is requested\.
+.SH "ENVIRONMENT"
+No environment variables are used directly\. The script depends on \fBtrace\-recurse\.sh\fR being present and executable on \fBPATH\fR\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Trace a container node through the full provenance graph:
+.IP "" 4
+.nf
+trace\.sh provenance\.dot trace\.dot Containers\.container_505627104
+.fi
+.IP "" 0
+.P
+Trace the same node, showing only Applications and Containers:
+.IP "" 4
+.nf
+trace\.sh \-\-include Applications \-\-include Containers \e
+    provenance\.dot trace\.dot Containers\.container_505627104
+.fi
+.IP "" 0
+.P
+Colour the affected nodes red in the original graph rather than filtering:
+.IP "" 4
+.nf
+trace\.sh \-\-colour \e
+    provenance\.dot coloured\.dot Containers\.container_505627104
+.fi
+.IP "" 0
+.P
+Write affected entity identifiers to a separate file:
+.IP "" 4
+.nf
+trace\.sh \-\-affected affected\.txt \e
+    provenance\.dot trace\.dot Containers\.container_505627104
+.fi
+.IP "" 0
+.P
+Render the output DOT file to a PDF:
+.IP "" 4
+.nf
+trace\.sh provenance\.dot trace\.dot Containers\.container_505627104
+dot \-Tpdf trace\.dot \-o trace\.pdf
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBtrace\-recurse\.sh\fR
+Helper script that performs the recursive graph traversal\. Must be on \fBPATH\fR\. Refuses to run unless called from \fBtrace\.sh\fR or itself\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The check for the input file (\fB[ \-z "$input" ] && [ ! \-f $input ]\fR) uses \fB&&\fR where \fB||\fR is intended\. As written, the condition can only be true when \fB$input\fR is both empty and does not exist as a file; a non\-empty but invalid path will pass the check and cause subsequent commands to fail with less informative errors\.
+.P
+The positional parameters are assigned in the order input, output, token (positions 1, 2, 3), but the usage message describes them in a different order (input, token, output)\. This inconsistency is likely to cause confusion\.
+.P
+The temporary file created by \fBmktemp\fR is not removed on exit; the \fBrm $temp_output\fR line at the end of the script is commented out\.
+.P
+The \fB\-\-colour\fR mode processes the original input file line by line and uses \fBegrep \-F \-q\fR to check whether each line appears verbatim in the temporary trace output\. Lines containing special characters may not match correctly, and the entire input file is re\-scanned for every line, making this mode O(n²) in the number of lines\.
+.P
+The \fB\-\-version\fR option exits with status 1 rather than 0, which is unconventional and will cause callers that check exit codes to treat a version query as a failure\.
+.P
+Variables \fBnumber\fR, \fBrest\fR, and \fBws\fR are set in the default behaviour comment line but are never used\.
+.SH "COPYRIGHT"
+Copyright \(co 2023 Doug Salt\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBtrace\-recurse\.sh\fR, \fBanalysis\.py\fR, \fBdot(1)\fR
+.SH "HISTORY"
+Created as part of the RECORD/SSRepI workflow tools to allow users to trace the provenance impact of a particular entity \(em such as a suspect dataset \(em forward through a directed provenance graph, and to visualise or enumerate the affected downstream entities\.

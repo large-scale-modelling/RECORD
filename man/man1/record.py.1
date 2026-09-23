@@ -1,0 +1,310 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\.PY" "" "March 2026" ""
+.SH "NAME"
+\fBrecord\.py\fR
+.SH "SYNOPSIS"
+\fBimport record\fR
+.SH "DESCRIPTION"
+\fBrecord\.py\fR (internally known as \fBssrepi\.py\fR) is the Python library that implements the Social Simulation Repository Interface (SSRepI) for the RECORD workflow system\. It provides an object\-relational mapping layer over a provenance database and is the foundational module consumed by helper scripts such as \fBupdate\.py\fR, \fBexists\.py\fR, \fBget\-value\.py\fR, and \fBcreate\-database\.py\fR\.
+.P
+The library models experimental provenance as a graph of entity classes\. Each class corresponds to a table in the relational schema (SQLite 3 or PostgreSQL) or to a vertex label in a Gremlin\-compatible graph database\. All entity classes inherit from the \fBTable\fR base class, which provides common persistence operations (\fBadd\fR, \fBupdate\fR, \fBquery\fR, \fBexists\fR, \fBsearch\fR) and common metadata fields (\fBCREATED\fR, \fBCREATOR\fR, \fBMODIFIED\fR, \fBMODIFIER\fR, \fBDESCRIPTION\fR, \fBNAME\fR, \fBABOUT\fR)\.
+.P
+The active database backend is selected at import time via the \fBRECORD_DBTYPE\fR environment variable\. Supported backends are \fBsqlite3\fR, \fBpostgres\fR, and \fBgremlin\fR (the default)\. Connection parameters are read from additional environment variables described under ENVIRONMENT below\.
+.P
+In addition to the entity classes, \fBrecord\.py\fR provides utility functions for generating provenance graphs using Graphviz and for encoding and decoding string\-based vertex identifiers for use in the Gremlin backend\.
+.SH "CLASSES"
+.SS "Table"
+Base class from which all entity classes inherit\. Provides the following methods:
+.TP
+\fBadd(conn)\fR
+Inserts a new record into the database\. Raises \fBInvalidEntity\fR if no primary key value is set\. Raises \fBGremlinVertexExists\fR if the vertex already exists in a Gremlin database\.
+.TP
+\fBexists(conn)\fR
+Returns \fBTrue\fR if a record with the current primary key already exists in the database, \fBFalse\fR otherwise\.
+.TP
+\fBquery(conn)\fR
+Populates the instance attributes from the database row matching the current primary key\. Raises \fBInvalidEntity\fR if no primary key is set\.
+.TP
+\fBupdate(conn)\fR
+Updates the database row corresponding to the current primary key with the current instance attribute values\. Records \fBMODIFIER\fR and \fBMODIFIED\fR automatically\.
+.TP
+\fBsearch(conn, equals)\fR
+Returns a list of primary key values for rows matching the key\-value pairs supplied in the \fIequals\fR dictionary\. Supports SQL \fBLIKE\fR wildcards (\fB%\fR, \fB_\fR) and, for the Gremlin backend, edge\-based traversal for foreign\-key columns\.
+.TP
+\fBsetValues(values)\fR
+Sets instance attributes from a dictionary\. Raises \fBInvalidEntity\fR for unrecognised column names\.
+.TP
+\fBvalidate()\fR
+Validates common fields\. Raises \fBInvalidEntity\fR if \fBABOUT\fR is not a valid absolute IRI/URI, if \fBCREATED\fR is not an ISO 8601 timestamp, or if \fBID_*\fR fields do not contain the entity\-type token as a substring\.
+.TP
+\fBgetDict()\fR
+Returns the instance attribute dictionary\.
+.TP
+\fBgetPrimaryKeys()\fR
+Returns a SQL \fBWHERE\fR clause fragment built from the current primary key values, or an empty string if no key is set\.
+.TP
+\fBcount(conn)\fR \fI(class method)\fR
+Returns the number of rows in the table\.
+.TP
+\fBgetAttributes()\fR \fI(class method)\fR
+Returns the column names defined by the class\.
+.TP
+\fBforeignKeys()\fR \fI(class method)\fR
+Parses the SQL schema string and returns a list of foreign key descriptors, each a dictionary with keys \fBsourceTable\fR, \fBsourceColumn\fR, \fBtargetTable\fR, and \fBtargetColumn\fR\.
+.TP
+\fBis_relation()\fR \fI(class method)\fR
+Returns \fBTrue\fR if the table is a many\-to\-many relation (all parts of its composite primary key are foreign keys)\.
+.TP
+\fBcreateTable(conn)\fR \fI(class method)\fR
+Executes the class's SQL schema to create the database table if it does not already exist\.
+.TP
+\fBdropTable(conn)\fR \fI(class method)\fR
+Drops the table and cascades\.
+.TP
+\fBtruncateTable(conn)\fR \fI(class method)\fR
+Truncates the table and cascades\.
+.SS "Entity Classes"
+The following classes are defined, each specialising \fBTable\fR with its own schema, primary key definition, and (where applicable) a \fBvalidate\fR override enforcing domain constraints\.
+.TP
+\fBApplication\fR
+A software application or script\. Fields include \fBID_APPLICATION\fR, \fBPURPOSE\fR, \fBVERSION\fR, \fBLICENCE\fR, \fBLANGUAGE\fR, \fBENVS\fR, \fBSEPARATOR\fR, \fBCALLS_APPLICATION\fR, \fBCALLS_PIPELINE\fR, \fBREVISION\fR, \fBMODEL\fR, and \fBLOCATION\fR (foreign key to \fBBox\fR)\.
+.TP
+\fBArgument\fR
+A formal argument type accepted by an \fBApplication\fR\. Fields include \fBID_ARGUMENT\fR, \fBTYPE\fR (one of \fBrequired\fR, \fBoption\fR, or \fBflag\fR), \fBORDER_VALUE\fR, \fBASSIGNMENT_OPERATOR\fR, \fBSEPARATOR\fR (one of \fB\-\-\fR, \fB\-\fR, or \fB/\fR), \fBSHORT_NAME\fR, \fBSHORT_SEPARATOR\fR, \fBARITY\fR, \fBARGSEP\fR, \fBRANGE\fR, \fBVARIABLE\fR, and \fBAPPLICATION\fR\.
+.TP
+\fBArgumentValue\fR
+A concrete value supplied for an \fBArgument\fR in a particular \fBProcess\fR\. Fields include \fBHAS_VALUE\fR, \fBBOX\fR, \fBFOR_PROCESS\fR, and \fBFOR_ARGUMENT\fR\.
+.TP
+\fBAssumption\fR
+A documented assumption associated with an \fBApplication\fR\.
+.TP
+\fBAssumes\fR
+Relation linking an \fBApplication\fR to one or more \fBAssumption\fR entities\.
+.TP
+\fBBox\fR
+A file or directory artefact\. Fields include \fBID_BOX\fR, \fBLOCATION_VALUE\fR, \fBLOCATION_TYPE\fR (e\.g\. \fBlocal\fR), \fBINSTANCE\fR (foreign key to \fBBoxType\fR), \fBENCODING\fR, \fBSIZE\fR, \fBMODIFICATION_TIME\fR, \fBUPDATE_TIME\fR, \fBHASH\fR, \fBOUTPUT_OF\fR (foreign key to \fBProcess\fR), and \fBLOCATION_APPLICATION\fR\.
+.TP
+\fBBoxType\fR
+A category of \fBBox\fR, identified by a MIME type (\fBFORMAT\fR) and a matching expression (\fBIDENTIFIER\fR)\. The identifier may be prefixed with \fBmagic:\fR for libmagic pattern matching or \fBname:\fR for file\-name pattern matching\.
+.TP
+\fBComputer\fR
+A compute node\. Fields include \fBID_COMPUTER\fR, \fBHOST_ID\fR, \fBIP_ADDRESS\fR, and \fBMAC_ADDRESS\fR\.
+.TP
+\fBDependency\fR
+A dependency relationship between two \fBApplication\fR entities\. Fields include \fBDEPENDANT\fR, \fBDEPENDENCY\fR, and \fBOPTIONALITY\fR\.
+.TP
+\fBDocumentation\fR
+A documentation artefact associated with an entity\.
+.TP
+\fBEntailment\fR
+A logical entailment linking two entities\.
+.TP
+\fBImplements\fR
+Relation linking an \fBApplication\fR to a \fBModel\fR\.
+.TP
+\fBInvolvement\fR
+Relation linking a \fBPerson\fR to a \fBProject\fR or \fBStudy\fR\.
+.TP
+\fBMeets\fR
+Records that a \fBComputer\fR satisfies a hardware or software \fBRequirement\fR\. Fields include \fBCOMPUTER_SPECIFICATION\fR and \fBREQUIREMENT_SPECIFICATION\fR\.
+.TP
+\fBModel\fR
+A computational model described or implemented by one or more \fBApplication\fR entities\.
+.TP
+\fBParameter\fR
+A parameter associated with a \fBModel\fR or \fBApplication\fR\.
+.TP
+\fBPerson\fR
+A contributor\. Fields include \fBID_PERSON\fR, \fBNAME\fR, and \fBEMAIL\fR\.
+.TP
+\fBPersonalData\fR
+Sensitive personal data fields extending \fBPerson\fR\.
+.TP
+\fBPipeline\fR
+A sequential ordering of \fBApplication\fR executions\. Fields include \fBID_PIPELINE\fR, \fBFIRST\fR (foreign key to \fBApplication\fR), and \fBNEXT\fR (foreign key to \fBPipeline\fR)\.
+.TP
+\fBProcess\fR
+A single execution of an \fBApplication\fR\. Fields include \fBID_PROCESS\fR, \fBSOME_USER\fR, \fBWORKING_DIR\fR, \fBHOST\fR, \fBEXECUTABLE\fR, \fBSTART_TIME\fR, and \fBEND_TIME\fR\.
+.TP
+\fBProduct\fR
+Declares that an \fBApplication\fR produces outputs of a given \fBBoxType\fR\. Fields include \fBAPPLICATION\fR, \fBBOX_TYPE\fR, \fBLOCATOR\fR, and \fBOPTIONALITY\fR\.
+.TP
+\fBProject\fR
+A research project grouping one or more \fBStudy\fR entities\.
+.TP
+\fBRequirement\fR
+A hardware or software requirement for an \fBApplication\fR\. Fields include \fBAPPLICATION\fR, \fBMINIMUM\fR, and \fBEXACT\fR (foreign keys to \fBSpecification\fR)\.
+.TP
+\fBSpecification\fR
+A measured characteristic of a \fBComputer\fR\. Fields include \fBID_SPECIFICATION\fR, \fBSPECIFICATION_OF\fR, and \fBVALUE\fR\.
+.TP
+\fBStatisticalInput\fR, \fBStatisticalMethod\fR, \fBStatisticalVariable\fR, \fBStatistics\fR
+Classes supporting the recording of statistical analyses associated with simulation outputs\.
+.TP
+\fBStudy\fR
+A research study within a \fBProject\fR\.
+.TP
+\fBTag\fR, \fBTagMap\fR
+Free\-text tagging of entities via a folksonomy\.
+.TP
+\fBUse\fR
+Declares that an \fBApplication\fR consumes inputs of a given \fBBoxType\fR\. Fields include \fBAPPLICATION\fR, \fBBOX_TYPE\fR, \fBLOCATOR\fR, and \fBOPTIONALITY\fR\.
+.TP
+\fBUser\fR
+A system account associated with a \fBPerson\fR\. Fields include \fBID_USER\fR, \fBHOME_DIR\fR, and \fBACCOUNT_OF\fR\.
+.TP
+\fBValue\fR
+A discrete allowed value for an \fBArgument\fR\.
+.TP
+\fBVariable\fR
+A named variable used by a \fBModel\fR or \fBArgument\fR\.
+.TP
+\fBVisualisation\fR, \fBVisualisationMethod\fR, \fBVisualisationValue\fR
+Classes supporting the recording of visualisation outputs produced by simulation runs\.
+.SS "Exceptions"
+.TP
+\fBInvalidEntity\fR
+Raised when field validation fails or when a required primary key is absent\.
+.TP
+\fBGremlinDBError\fR
+Raised when a Gremlin query cannot be constructed (for example, because no vertex identifier could be derived)\.
+.TP
+\fBGremlinVertexExists\fR
+Raised by \fBadd\fR when the vertex already exists in the Gremlin database\.
+.SH "MODULE\-LEVEL FUNCTIONS"
+.TP
+\fBis_path(s)\fR → \fBbool\fR
+Returns \fBTrue\fR if \fIs\fR is a path to an existing file or directory\.
+.TP
+\fBis_iri(s)\fR → \fBbool\fR
+Returns \fBTrue\fR if \fIs\fR parses as a valid IRI according to RFC 3987\.
+.TP
+\fBdict_factory(cursor, row)\fR → \fBdict\fR
+SQLite row factory that returns rows as dictionaries keyed by column name\.
+.TP
+\fBdraw_graph(conn, nodes, output)\fR
+Queries the database for the supplied node set, resolves edges between them, removes orphaned nodes, and writes the resulting Graphviz DOT representation to \fIoutput\fR (or to standard output if \fIoutput\fR is \fBNone\fR)\.
+.TP
+\fBget_nodes(conn, nodes, labels)\fR → \fBdict\fR
+Fetches node data for the specified node specification and label mapping from the database, adds them to a Graphviz \fBDigraph\fR, and returns the active node dictionary\.
+.TP
+\fBget_edges(conn, edges, activeNodes)\fR → \fBdict\fR
+Fetches edges linking the supplied active nodes from the database and returns them as a dictionary mapping \fB((sourceTable, id), (targetTable, id))\fR pairs to edge labels\.
+.TP
+\fBsave_dot(nodes, edges, output=None)\fR
+Renders a node and edge dictionary to Graphviz DOT format and writes the result to \fIoutput\fR or to standard output\.
+.TP
+\fBremove_orphans(nodes, edges)\fR → \fBdict\fR
+Filters \fInodes\fR to retain only those that appear in at least one edge in \fIedges\fR\.
+.TP
+\fBremove_edges(nodes, edges)\fR → \fBdict\fR
+Filters \fIedges\fR to retain only those whose source and target nodes both appear in \fInodes\fR\.
+.TP
+\fBencodeIndex(stringIndex)\fR → \fBint\fR
+Encodes a string as an integer by treating each character as a base\-256 digit\. Used to produce numeric vertex identifiers for the Gremlin backend\.
+.TP
+\fBdecodeIndex(numericIndex)\fR → \fBstr\fR
+Reverses the encoding performed by \fBencodeIndex\fR\.
+.TP
+\fBgremlin_safe_string(s)\fR → \fBstr\fR
+Escapes backslashes and newline characters in \fIs\fR to produce a string safe for embedding in a Gremlin query\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR (default: \fBgremlin\fR)\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file (default: \fBssrepi\.db\fR in the current working directory)\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username (default: \fBds42723\fR)\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name (default: \fBssrepi\fR)\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname (default: \fBlocalhost\fR)\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number (default: \fB5432\fR)\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server (default: \fBws://localhost:8182/gremlin\fR)\. Used when \fBRECORD_DBTYPE\fR is \fBgremlin\fR\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout for Gremlin in milliseconds (default: \fB30000\fR)\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+Not applicable\. \fBrecord\.py\fR is a library module\.
+.SH "EXAMPLES"
+Connecting to a SQLite database and recording an application:
+.IP "" 4
+.nf
+import os, record
+os\.environ['RECORD_DBTYPE'] = 'sqlite3'
+os\.environ['RECORD_DBFILE'] = '/path/to/ssrepi\.db'
+
+import sqlite3
+conn = sqlite3\.connect(os\.environ['RECORD_DBFILE'])
+conn\.row_factory = record\.dict_factory
+
+app = record\.Application({'ID_APPLICATION': 'application_my_sim',
+                          'NAME': 'my_sim',
+                          'LANGUAGE': 'Python'})
+try:
+    app\.add(conn)
+except record\.GremlinVertexExists:
+    app\.update(conn)
+conn\.commit()
+.fi
+.IP "" 0
+.P
+Querying an existing process record:
+.IP "" 4
+.nf
+proc = record\.Process({'ID_PROCESS': 'process_abc123'})
+proc\.query(conn)
+print(proc\.START_TIME, proc\.END_TIME)
+.fi
+.IP "" 0
+.P
+Checking whether a box exists:
+.IP "" 4
+.nf
+box = record\.Box({'ID_BOX': 'box_987654'})
+if not box\.exists(conn):
+    box\.LOCATION_VALUE = '/data/output\.csv'
+    box\.LOCATION_TYPE  = 'local'
+    box\.add(conn)
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBssrepi\.db\fR
+Default SQLite database file, created in the current working directory when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.SH "AUTHORS"
+Lorenzo Milazzo, J\. Gary Polhill, Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBdebug\fR flag is hard\-coded to \fBTrue\fR at module level, overriding the \fBRECORD_DEBUG\fR environment variable check immediately above it\.
+.P
+The \fBsearch\fR method contains a partially commented\-out alternative implementation\. The active implementation may not correctly handle foreign\-key column searches under all Gremlin configurations\.
+.P
+\fBencodeIndex\fR and \fBdecodeIndex\fR use a byte\-by\-byte base\-256 encoding that may produce large integers for long strings; the authors note this may not be the best approach\.
+.P
+The \fBupdate\fR method for the Gremlin backend attempts to drop existing edges by edge identifier, but the deletion query uses the foreign\-key value as the edge identifier rather than the actual edge ID, which may not behave as intended in all Gremlin server configurations\.
+.SH "COPYRIGHT"
+Copyright \(co 2015, 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.sh\fR, \fBrecord\-clean\.sh\fR, \fBrecord\-run\.sh\fR, \fBupdate\.py\fR, \fBexists\.py\fR, \fBget\-value\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Originally developed as \fBssrepi\.py\fR for the Social Simulation Repository Interface project (Polhill et al\. "Towards metadata standards for social simulation outputs"), then extended and incorporated into the RECORD workflow system to provide multi\-backend provenance capture for simulation experiments\.

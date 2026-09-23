@@ -1,0 +1,93 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-CREATE\-DATABASE\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-create\-database\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-create\-database\.py\fR
+.SH "DESCRIPTION"
+\fBrecord\-create\-database\.py\fR initialises the relational database schema for the RECORD provenance system\. It connects to the configured database, creates all entity tables defined by the \fBrecord\fR library if they do not already exist, and then disconnects\.
+.P
+The script is a no\-op when the database backend is Gremlin (\fBRECORD_DBTYPE=gremlin\fR), since schema creation is meaningless for a graph database\. In that case a diagnostic message is written to standard error and the script exits without making any changes\.
+.P
+\fBrecord\-create\-database\.py\fR is called automatically by \fBrecord\.sh\fR during its initialisation sequence to ensure the schema is in place before any provenance recording begins\. It may also be invoked directly to set up a fresh database outside of a workflow run\.
+.SH "OPTIONS"
+This command takes no command\-line options\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if the database connection fails or if table creation raises an unhandled exception\.
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBrecord\fR library\. Refer to \fBrecord\.py\fR for the full list, including:
+.TP
+\fBRECORD_DBTYPE\fR
+Selects the database backend\. One of \fBsqlite3\fR or \fBpostgres\fR\. If set to \fBgremlin\fR the script exits without creating any tables\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL hostname\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port number\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Initialise a SQLite database in the current directory:
+.IP "" 4
+.nf
+RECORD_DBTYPE=sqlite3 RECORD_DBFILE=ssrepi\.db record\-create\-database\.py
+.fi
+.IP "" 0
+.P
+Initialise a PostgreSQL database:
+.IP "" 4
+.nf
+RECORD_DBTYPE=postgres \e
+RECORD_DBUSER=myuser \e
+RECORD_DBNAME=ssrepi \e
+RECORD_POSTGRES_PASSWORD=secret \e
+record\-create\-database\.py
+.fi
+.IP "" 0
+.P
+Typical workflow usage (called automatically by \fBrecord\.sh\fR):
+.IP "" 4
+.nf
+source record\.sh
+# record\-create\-database\.py has already been called at this point
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library providing \fBconnect_db\fR, \fBcreate_tables\fR, and \fBdisconnect_db\fR\. Must be present in a \fBlib\fR subdirectory relative to the working directory, or otherwise on the Python path\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+Debug output is controlled by the \fBrecord\.debug\fR flag, which is unconditionally set to \fBTrue\fR inside \fBrecord\.py\fR regardless of the \fBRECORD_DEBUG\fR environment variable\. As a result diagnostic messages are always written to standard error\.
+.P
+The script takes no action and produces no error when \fBRECORD_DBTYPE\fR is \fBgremlin\fR, but it still exits with status 0 rather than a non\-zero status that would indicate to the caller that no initialisation was performed\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-run\.sh\fR, \fBrecord\-clean\.sh\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a single\-command means of initialising the provenance database schema prior to running social simulation experiments\.

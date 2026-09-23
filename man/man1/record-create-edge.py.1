@@ -1,0 +1,107 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-CREATE\-EDGE\.PY" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\-create\-edge\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-create\-edge\.py\fR \fIEDGE_LABEL\fR \fIOUT_VERTEX_ID\fR \fIIN_VERTEX_ID\fR
+.br
+[\fIPROP_NAME\fR \fIPROP_VALUE\fR \|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-create\-edge\.py\fR creates a directed edge in a Gremlin graph database between two existing vertices\. The edge runs from the vertex identified by \fIOUT_VERTEX_ID\fR to the vertex identified by \fIIN_VERTEX_ID\fR and is labelled with \fIEDGE_LABEL\fR\. Zero or more edge properties may be supplied as additional positional argument pairs\.
+.P
+The script is intended for use with the Gremlin backend only\. If \fBRECORD_DBTYPE\fR is set to any value other than \fBgremlin\fR the script writes an error to standard error and exits with a non\-zero status\.
+.P
+Vertices are located by their \fBname\fR property using a Gremlin \fBhas\fR traversal step\. Both \fIOUT_VERTEX_ID\fR and \fIIN_VERTEX_ID\fR must therefore correspond to the \fBname\fR property of existing vertices in the graph, not to their internal Gremlin vertex identifiers\.
+.P
+Within the RECORD workflow, \fBrecord\-create\-edge\.py\fR is called by \fBrecord\.sh\fR when inserting relationship records (such as \fBDEPENDENCY\fR, \fBUSES\fR, \fBPRODUCT\fR, and \fBIN_FILE\fR) into a Gremlin\-backed provenance store, in place of the SQL \fBINSERT\fR statements used by the relational backends\.
+.SH "ARGUMENTS"
+.TP
+\fIEDGE_LABEL\fR
+The label to assign to the new edge (for example \fBDEPENDENCY\fR, \fBUSES\fR, or \fBPRODUCT\fR)\.
+.TP
+\fIOUT_VERTEX_ID\fR
+The value of the \fBname\fR property of the source (outgoing) vertex\.
+.TP
+\fIIN_VERTEX_ID\fR
+The value of the \fBname\fR property of the target (incoming) vertex\.
+.TP
+\fIPROP_NAME\fR \fIPROP_VALUE\fR
+Zero or more property key\-value pairs to attach to the new edge\. Properties must be supplied in pairs; an odd number of additional arguments is an error\. Both keys and values are passed through \fBrecord\.gremlin_safe_string\fR before being embedded in the query\.
+.SH "OPTIONS"
+This command takes no option flags\. All arguments are positional\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero if:
+.IP "\(bu" 4
+fewer than three positional arguments are supplied;
+.IP "\(bu" 4
+the number of additional property arguments is odd;
+.IP "\(bu" 4
+\fBRECORD_DBTYPE\fR is not \fBgremlin\fR;
+.IP "\(bu" 4
+the database connection fails; or
+.IP "\(bu" 4
+the Gremlin query raises an exception (for example, if either vertex does not exist)\.
+.IP "" 0
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_DBTYPE\fR
+Must be set to \fBgremlin\fR\. The script exits immediately with an error if this variable is set to any other value\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+WebSocket URL of the Gremlin server (default: \fBws://localhost:8182/gremlin\fR as set by \fBrecord\.py\fR)\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Per\-query evaluation timeout in milliseconds (default: \fB30000\fR as set by \fBrecord\.py\fR)\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error, including the full Gremlin query string and the parsed argument values\.
+.SH "RETURN VALUE"
+None\.
+.SH "EXAMPLES"
+Create a \fBDEPENDENCY\fR edge from application \fBapp_123\fR to application \fBapp_456\fR:
+.IP "" 4
+.nf
+record\-create\-edge\.py DEPENDENCY app_123 app_456
+.fi
+.IP "" 0
+.P
+Create a \fBUSES\fR edge with an \fBoptionality\fR property:
+.IP "" 4
+.nf
+record\-create\-edge\.py USES app_123 box_type_csv optionality always
+.fi
+.IP "" 0
+.P
+Create a \fBPRODUCT\fR edge with a \fBlocator\fR property:
+.IP "" 4
+.nf
+record\-create\-edge\.py PRODUCT app_123 box_type_output locator stdout
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/record\.py\fR
+The RECORD provenance library providing \fBconnect_db\fR, \fBdisconnect_db\fR, \fBgremlin_safe_string\fR, \fBdb_type\fR, and \fBdebug\fR\. Must be present in a \fBlib\fR subdirectory relative to the working directory, or otherwise on the Python path\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The usage message and the length check (\fBif len(sys\.argv) < 4\fR) are placed after the \fBreturn\fR statement of \fBparse_prop_pairs\fR and are therefore unreachable dead code\. Missing positional arguments will instead cause an \fBIndexError\fR when \fBsys\.argv[1]\fR, \fBsys\.argv[2]\fR, or \fBsys\.argv[3]\fR are accessed\.
+.P
+Vertices are located by their \fBname\fR property rather than by their Gremlin vertex ID\. If two vertices share the same \fBname\fR value the traversal may match more than one vertex, resulting in multiple edges being created silently\.
+.P
+The Gremlin query is constructed by simple string concatenation without parameterisation, which may produce malformed queries if \fIEDGE_LABEL\fR, \fIOUT_VERTEX_ID\fR, or \fIIN_VERTEX_ID\fR contain single\-quote characters, even though property values are passed through \fBgremlin_safe_string\fR\.
+.P
+The \fBRECORD_DBTYPE\fR check is performed twice in \fB__main__\fR: once before parsing properties and once after\. The second check is redundant\.
+.SH "COPYRIGHT"
+Copyright \(co The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBupdate\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to provide a command\-line interface for inserting labelled, property\-bearing edges into a Gremlin\-backed provenance graph, supporting the relationship\-recording operations performed by \fBrecord\.sh\fR when \fBRECORD_DBTYPE\fR is set to \fBgremlin\fR\.

@@ -1,0 +1,82 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-IMAGE\-TBOX\.PY" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-image\-tbox\.py\fR
+.SH "SYNOPSIS"
+\fBrecord\-image\-tbox\.py\fR \fB>\fR \fIoutput\.owl\fR
+.SH "DESCRIPTION"
+\fBrecord\-image\-tbox\.py\fR generates an OWL ontology, in OWL Functional\-Style Syntax, describing the structure (TBOX) of the RECORD/SSREPI database schema itself \(em tables, columns, primary keys, foreign keys, and the relationships between tables \(em rather than the data contained within it\. This is distinct from the other \fBrecord\-image\-*\.py\fR scripts, which visualise the \fIdata\fR graph; this script documents the \fIschema\fR\.
+.P
+The script writes the generated ontology directly to standard output, in three phases:
+.IP "1." 4
+A fixed ontology header declaring core classes (\fBColumn\fR, \fBForeignKey\fR, \fBPrimaryKey\fR, \fBTable\fR, \fBKey\fR) and object properties (\fBhasForeignKey\fR, \fBhasPart\fR, \fBhasPrimaryKey\fR, \fBmanyToMany\fR, \fBpartOf\fR, \fBrelation\fR), along with their domains, ranges, and labels\.
+.IP "2." 4
+For each relationship returned by \fBssrepi\.derive_edges()\fR, declarations of the source and target table classes, their primary or foreign key classes, and an object property linking them \(em classified as either \fBmanyToMany\fR (if the edge has a \fBjoin\fR) or \fBrelation\fR otherwise\.
+.IP "3." 4
+For each table and column set returned by \fBssrepi\.labels()\fR, declarations of the table class and each of its column classes, asserting that each column is part of its table\.
+.IP "" 0
+.P
+The output is closed with a final \fB)"\fR to complete the \fBOntology(\|\.\|\.\|\.)\fR declaration opened in the header\.
+.SH "OPTIONS"
+This script accepts no options or arguments\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns non\-zero (with a \fBSyntaxError\fR) under Python 3, since the script is written using Python 2 print\-statement syntax (see BUGS)\.
+.SH "ENVIRONMENT"
+The script inherits all database connection environment variables from the \fBssrepi\fR library\. Refer to \fBssrepi\.py\fR for the full list\. No database connection is opened directly in this script; schema information is obtained via \fBssrepi\.derive_edges()\fR and \fBssrepi\.labels()\fR\.
+.SH "RETURN VALUE"
+Writes a complete OWL ontology in Functional\-Style Syntax to standard output\. Redirect to a file to capture it:
+.IP "" 4
+.nf
+record\-image\-tbox\.py > schema\-tbox\.owl
+.fi
+.IP "" 0
+.SH "EXAMPLES"
+Generate the schema TBOX and save it to a file:
+.IP "" 4
+.nf
+record\-image\-tbox\.py > schema\-tbox\.owl
+.fi
+.IP "" 0
+.P
+Generate the TBOX and validate it with an OWL tool (e\.g\. ROBOT):
+.IP "" 4
+.nf
+record\-image\-tbox\.py > schema\-tbox\.owl
+robot validate \-\-input schema\-tbox\.owl
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib/ssrepi\.py\fR
+The SSREPI provenance library\. Must be importable as \fBssrepi\fR; the script appends \fBlib\fR to \fBsys\.path\fR before importing, so \fBssrepi\.py\fR must be present in a \fBlib/\fR subdirectory relative to the working directory\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+\fBThis script is written in Python 2 and will not run under Python 3\.\fR Every \fBprint\fR statement uses the bare Python 2 form (\fBprint "\|\.\|\.\|\."\fR) rather than the Python 3 function call form (\fBprint("\|\.\|\.\|\.")\fR)\. This will raise a \fBSyntaxError\fR immediately on any Python 3 interpreter, which is what the shebang (\fB#!/usr/bin/env python3\fR) requests\. The shebang and the script body are therefore mutually inconsistent\.
+.P
+This script imports \fBssrepi\fR rather than \fBrecord\fR, consistent with the other "image" scripts but inconsistent with \fBrecord\-image\-project\.py\fR\.
+.P
+The module\-level imports include \fBgraphviz\fR, \fBos\fR, \fBre\fR, \fBrandom\fR, and \fBstring\fR, none of which are used anywhere in the script body\.
+.P
+The variable \fBsourceForeignKey\fR is computed twice: once unconditionally near the top of the loop body, and again inside the \fBelse\fR branch when \fB"join" not in edgeValue\.keys()\fR\. The first computation is dead code\.
+.P
+Variable names \fBsourceClass\fR, \fBtargetClass\fR, \fBsourceKey\fR, \fBtargetKey\fR, \fBtargetPrimaryKey\fR, and \fBsourceForeignKey\fR are all assigned the \fIstring\fR result of \fBgetattr(\|\.\|\.\|\.)()\fR or string concatenation, but are named as if they held class objects\. This is a naming inconsistency that makes the logic difficult to follow (the author's own inline comment \(em "you need to tidy this up, because it is virtually impossible to read" \(em confirms this)\.
+.P
+The indentation inside the multi\-line string literals for \fBsourcePrimaryKey\fR and \fBsourceForeignKey\fR blocks contains inconsistent leading whitespace (some \fBSubClassOf\fR lines are indented with extra spaces relative to their siblings), which does not affect the generated OWL syntax but suggests the string templates were edited carelessly\.
+.P
+The script assumes \fBssrepi\.derive_edges()\fR and \fBssrepi\.labels()\fR succeed and return well\-formed dictionaries; there is no error handling if the schema cannot be introspected or if \fBsource\fR/\fBtarget\fR strings do not contain the expected \fBClassName(key)\fR format, in which case \fB\.index("(")\fR will raise a \fBValueError\fR\.
+.P
+No \fBssrepi\.connect_db()\fR / \fBdisconnect_db()\fR calls are present, unlike the other \fBrecord\-image\-*\.py\fR scripts, suggesting \fBderive_edges()\fR and \fBlabels()\fR operate on static schema metadata rather than a live connection \(em this should be confirmed and documented in \fBssrepi\.py\fR\.
+.SH "COPYRIGHT"
+Copyright \(co 2017 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBssrepi\.py\fR, \fBrecord\.py\fR, \fBrecord\-image\-project\.py\fR, \fBrecord\-image\-services\.py\fR, \fBrecord\-image\-workflow\.py\fR, \fBrecord\-image\-provenance\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD/SSREPI workflow tools to generate a formal OWL ontology describing the structure of the underlying database schema, complementing the data\-level Graphviz visualisations produced by the other \fBrecord\-image\-*\.py\fR scripts\.

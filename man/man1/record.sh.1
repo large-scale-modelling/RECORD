@@ -1,0 +1,185 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\.SH" "" "May 2026" ""
+.SH "NAME"
+\fBrecord\.sh\fR
+.SH "SYNOPSIS"
+\fB\. record\.sh\fR
+.SH "DESCRIPTION"
+\fBrecord\.sh\fR is a Bash library that provides the core provenance\-recording functions for the RECORD workflow system\. It is sourced by experiment scripts rather than executed directly\.
+.P
+When sourced, \fBrecord\.sh\fR performs one\-time initialisation: it reads user data from \fBRECORD_USER_FILE\fR, registers each person and user account in the provenance database, creates standard box type entries for Bash, Perl, R, and ELF executable scripts, and validates that the environment meets minimum requirements (Bash 4 or later, a reachable database, and the \fBcreate\-database\.py\fR helper on \fBPATH\fR)\.
+.P
+The library uses a guard variable \fBCONFIG_LOADED\fR to ensure initialisation runs only once per shell session even if \fBrecord\.sh\fR is sourced multiple times\.
+.P
+Functions whose names begin with an underscore (\fB_\fR) are internal and should not be called directly from experiment scripts\. Functions prefixed with \fBrecord_\fR form the public API\.
+.SH "PUBLIC FUNCTIONS"
+.TP
+\fBrecord_application\fR \fIexecutable\fR [\fI\-\-option=value\fR \|\.\|\.\|\.]
+Registers an application in the provenance database\. Detects the language of \fIexecutable\fR (Bash, Perl, R, or ELF binary), records its file metadata (size, hash, modification time), and creates or updates the corresponding Application and Box entries\. Optional \fB\-\-model=\fR and \fB\-\-instance=\fR parameters associate the application with a model or box instance\. Returns the application identifier on standard output\.
+.TP
+\fBrecord_run\fR \fIexecutable\fR [\fI\-\-record\-argument\-ID=value\fR \|\.\|\.\|\.] \e
+.TP
+[\fI\-\-record\-input\-ID=path\fR \|\.\|\.\|\.] [\fI\-\-record\-output\-ID=path\fR \|\.\|\.\|\.] \e
+.TP
+[\fI\-\-record\-stdout\-ID=path\fR] [\fI\-\-record\-stderr\-ID=path\fR] \e
+.TP
+[\fI\-\-record\-extend\-stdout\-ID=path\fR] [\fI\-\-dependency=executable\fR] \e
+.TP
+[\fI\-\-cwd=directory\fR]
+Records provenance for, and synchronously executes, \fIexecutable\fR\. Creates a Process entry in the database, maps \fB\-\-record\-argument\-*\fR flags to ArgumentValue entries, maps \fB\-\-record\-input\-*\fR flags to input Box entries, executes the application (optionally in \fIdirectory\fR if \fB\-\-cwd\fR is given), then maps \fB\-\-record\-output\-*\fR, \fB\-\-record\-stdout\-*\fR, \fB\-\-record\-stderr\-*\fR, and \fB\-\-record\-extend\-stdout\-*\fR flags to output Box entries\. Updates the Pipeline chain on completion\. Exits with a non\-zero status if the application fails\.
+.TP
+\fBrecord_batch\fR \fIexecutable\fR [\fI\-\-record\-argument\-ID=value\fR \|\.\|\.\|\.] \e
+.TP
+[\fI\-\-record\-input\-ID=path\fR \|\.\|\.\|\.] [\fI\-\-record\-output\-ID=path\fR \|\.\|\.\|\.] \e
+.TP
+[\fI\-\-wait_for=pipeline_id\fR]
+Submits \fIexecutable\fR for asynchronous execution\. When \fBRECORD_SLURM\fR is set the job is submitted via \fBsbatch\fR using \fBRECORD_SLURM_PREFIX\fR as the job\-name prefix and \fB\-\-wait_for\fR is translated to a Slurm \fB\-\-dependency=afterany:\fR clause\. Without Slurm the function calls \fBrecord_block\fR to enforce the \fBRECORD_MAX_PROCESSES\fR limit before forking \fBrecord_run\fR in the background\.
+.TP
+\fBrecord_block\fR [\fIid_application\fR]
+Blocks the calling script until the number of running instances of \fIid_application\fR (or the calling script if omitted) falls below \fBRECORD_MAX_PROCESSES\fR\. Polls at \fBRECORD_SLEEP\fR\-second intervals\.
+.TP
+\fBrecord_argument_type\fR \fIid_application\fR \fIid_argument\fR [\fI\-\-option=value\fR \|\.\|\.\|\.]
+Registers a named argument type for \fIid_application\fR in the database\. Subsequent calls to \fBrecord_run\fR can reference arguments by the \fIid_argument\fR token via \fB\-\-record\-argument\-ID\fR\.
+.TP
+\fBrecord_input_box_type\fR \fIid_application\fR \fIbox_type_name\fR \fIfile_pattern\fR \fIlocator\fR
+Registers a named input file type for \fIid_application\fR\. \fIfile_pattern\fR is a regular expression matched against file names\. \fIlocator\fR must conform to the pattern \fB^(stdout|stderr|arg=[0\-9]+|argid=\.+|opt=\.+|env=\.+|in_file=\.+)$\fR\. Creates a Uses relationship in the database\. Returns the box type identifier on standard output\.
+.TP
+\fBrecord_output_box_type\fR \fIid_application\fR \fIbox_type_name\fR \fIfile_pattern\fR \fIlocator\fR
+Registers a named output file type for \fIid_application\fR\. Arguments have the same semantics as \fBrecord_input_box_type\fR\. Creates a Product relationship in the database\. Returns the box type identifier on standard output\.
+.TP
+\fBrecord_require_minimum\fR \fIid_application\fR \fIspec_name\fR \fIrequired_version\fR \fIactual_version\fR
+Asserts that \fIactual_version\fR is greater than or equal to \fIrequired_version\fR for a named specification of the current computer\. Version strings may use dotted numeric notation (\fBmajor\.minor\.patch\fR) or magnitude suffixes (\fBK\fR, \fBM\fR, \fBG\fR, \fBT\fR)\. Records Computer, Specification, Requirement, and Meets entries in the database\. Returns 0 if the requirement is satisfied, non\-zero otherwise\.
+.TP
+\fBrecord_require_exact\fR \fIid_application\fR \fIspec_name\fR \fIrequired_literal\fR \fIactual_literal\fR
+Asserts that \fIactual_literal\fR equals \fIrequired_literal\fR exactly\. Records the same database entries as \fBrecord_require_minimum\fR\. Returns 0 on match, non\-zero otherwise\.
+.SH "OPTIONS"
+\fBrecord\.sh\fR itself takes no command\-line options\. It is sourced, not executed\.
+.SH "EXIT STATUS"
+Individual functions exit the calling shell with \fB\-1\fR (non\-zero) on database errors, missing executables, failed requirement checks, or when \fBrecord_run\fR reports a non\-zero exit status from the wrapped application\.
+.P
+The initialisation block exits the calling shell immediately if \fBRECORD_USER_FILE\fR does not exist, if Bash is older than version 4, if \fBcreate\-database\.py\fR is not on \fBPATH\fR, or (when \fBRECORD_SLURM\fR is set) if \fBsqueue\fR is not available\.
+.SH "ENVIRONMENT"
+.TP
+\fBRECORD_USER_FILE\fR
+Path to a CSV file listing project contributors\. Required\. Each row contains fields \fBrecord_user_id\fR, \fBname\fR, \fBemail\fR, \fBuser\fR, and \fBhomedir\fR\.
+.TP
+\fBRECORD_DBTYPE\fR
+Database backend\. One of \fBsqlite3\fR, \fBpostgres\fR, or \fBgremlin\fR (default: \fBgremlin\fR)\.
+.TP
+\fBRECORD_DBFILE\fR
+Path to the SQLite database file (default: \fBssrepi\.db\fR)\. Used when \fBRECORD_DBTYPE\fR is \fBsqlite3\fR\.
+.TP
+\fBRECORD_DBUSER\fR
+PostgreSQL username (default: \fBds42723\fR)\. Used when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_DBNAME\fR
+PostgreSQL database name (default: \fBssrepi\fR)\.
+.TP
+\fBRECORD_POSTGRES_HOST\fR
+PostgreSQL host (default: \fBlocalhost\fR)\.
+.TP
+\fBRECORD_POSTGRES_PORT\fR
+PostgreSQL port (default: \fB5432\fR)\.
+.TP
+\fBRECORD_POSTGRES_PASSWORD\fR
+PostgreSQL password\. Required when \fBRECORD_DBTYPE\fR is \fBpostgres\fR\.
+.TP
+\fBRECORD_GREMLIN_HOST\fR
+Gremlin server WebSocket URL (default: \fBws://127\.0\.0\.1:8182/gremlin\fR)\.
+.TP
+\fBRECORD_GREMLIN_TIMEOUT\fR
+Gremlin query timeout in milliseconds (default: \fB1200000\fR)\.
+.TP
+\fBRECORD_MAX_PROCESSES\fR
+Maximum number of concurrent background processes enforced by \fBrecord_block\fR and \fBrecord_batch\fR (default: \fB4\fR)\.
+.TP
+\fBRECORD_SLEEP\fR
+Poll interval in seconds used by \fBrecord_block\fR (default: \fB30\fR)\.
+.TP
+\fBRECORD_SLURM\fR
+When set, \fBrecord_batch\fR submits jobs to Slurm via \fBsbatch\fR\.
+.TP
+\fBRECORD_SLURM_PREFIX\fR
+Prefix applied to Slurm job names (default: \fBrecord\fR)\.
+.TP
+\fBRECORD_DEBUG\fR
+When set, enables verbose diagnostic output to standard error\.
+.TP
+\fBCONFIG_LOADED\fR
+Set by \fBrecord\.sh\fR after initialisation to prevent re\-execution on subsequent source calls\.
+.SH "RETURN VALUE"
+None\. \fBrecord\.sh\fR is a library; its functions communicate results through standard output and exit codes\.
+.SH "EXAMPLES"
+Source the library and register the calling script:
+.IP "" 4
+.nf
+source record\.sh
+id_app=$(record_me)
+.fi
+.IP "" 0
+.P
+Register an argument type and run an application with provenance:
+.IP "" 4
+.nf
+id_arg=$(record_argument_type "$id_app" argument_input_file \e
+    \-\-name=input \-\-separator=\-\- \-\-assignment_operator=equal)
+
+record_run my_analysis\.sh \e
+    \-\-record\-argument\-argument_input_file=data\.csv \e
+    \-\-record\-output\-result_box_type=output\.csv
+.fi
+.IP "" 0
+.P
+Submit a job to run in the background (or via Slurm if configured):
+.IP "" 4
+.nf
+record_batch my_analysis\.sh \e
+    \-\-record\-argument\-argument_input_file=data\.csv \e
+    \-\-record\-stdout\-log_box_type=run\.log
+.fi
+.IP "" 0
+.P
+Assert a minimum version requirement:
+.IP "" 4
+.nf
+record_require_minimum "$id_app" python3 3\.9 $(python3 \-\-version | awk '{print $2}')
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.folksonomy\.sh\fR
+Tag and folksonomy utilities sourced by \fBrecord\.sh\fR at initialisation\.
+.TP
+\fBupdate\.py\fR
+Python helper used by library functions to insert or update database records\.
+.TP
+\fBexists\.py\fR
+Python helper used to check whether a record already exists in the database\.
+.TP
+\fBget\-value\.py\fR
+Python helper used to retrieve individual field values from the database\.
+.TP
+\fBcreate\-database\.py\fR
+Python helper invoked at initialisation to ensure the database schema exists\.
+.TP
+\fBcreate\-edge\.py\fR
+Python helper used by some functions when \fBRECORD_DBTYPE\fR is \fBgremlin\fR to create graph edges directly\.
+.SH "AUTHORS"
+Doug Salt, Lorenzo Milazzo, Gary Polhill
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The library uses \fBeval\fR to execute wrapped applications, which may cause unexpected word splitting if arguments contain unusual characters\.
+.P
+Version comparison in \fBrecord_require_minimum\fR is only performed when both the required and actual values match the dotted\-numeric or magnitude\-suffix patterns; non\-matching strings cause the function to return non\-zero via the regex fall\-through path\.
+.P
+The \fBRECORD_PIPELINE\fR file is written to \fB/tmp\fR using a name derived from \fB$USER\fR, \fB$$\fR, and \fB$(basename $0)\fR, which may cause collisions in unusual execution environments\.
+.SH "COPYRIGHT"
+Copyright \(co 2022 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\-run\.sh\fR, \fBrecord\-clean\.sh\fR, \fBrecord\-start\.sh\fR, \fBrecord\.py\fR
+.SH "HISTORY"
+Developed as part of the RECORD workflow system to provide provenance capture for social simulation experiments, based on the SSRepI data model described in Polhill et al\. "Towards metadata standards for social simulation outputs"\.

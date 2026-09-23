@@ -1,0 +1,156 @@
+.\" generated with Ronn-NG/v0.10.1
+.\" http://github.com/apjanke/ronn-ng/tree/0.10.1
+.TH "RECORD\-PREPROCESS\.JL" "" "June 2026" ""
+.SH "NAME"
+\fBrecord\-preprocess\.jl\fR
+.SH "SYNOPSIS"
+\fBrecord\-preprocess\.jl\fR [\fIoptions\fR] \fB\-\-\fR \fIcommand\fR [\fIarg\fR\|\.\|\.\|\.]
+.SH "DESCRIPTION"
+\fBrecord\-preprocess\.jl\fR parses a command invocation and generates the provenance boilerplate needed to record it in the RECORD workflow system\. It is intended to wrap an existing command call: everything before \fB\-\-\fR is interpreted as options to the preprocessor itself; everything after \fB\-\-\fR is the target command and its arguments\.
+.P
+The script produces two kinds of output:
+.IP "1." 4
+\fBStandard output\fR \(em a shell fragment assigning \fB$ARGS\fR with \fB\-\-record\-argument\-*\fR and \fB\-\-record\-stdout\-*\fR / \fB\-\-record\-stderr\-*\fR lines, one per argument or redirection, for direct inclusion in the provenance\-recording call\.
+.IP "2." 4
+\fBArgument\-types library file\fR (\fBlib\.<PROG>\.argument\-types\.sh\fR by default) \(em a shell script that registers each argument type with \fBrecord_argument_type\fR, with placeholder descriptions and ranges derived from the observed values\.
+.IP "3." 4
+\fBOutput\-types library file\fR (\fBlib\.<PROG>\.output\-types\.sh\fR by default) \(em a shell script that registers each redirected output with \fBrecord_output_box_type\fR\.
+.IP "" 0
+.P
+The first token after \fB\-\-\fR must be a resolvable executable (\fBSys\.which\fR is used to verify this); it becomes \fB$PROG\fR and is used to namespace all generated identifiers\.
+.P
+Argument parsing of the passthrough section handles the three major command\-line conventions automatically:
+.IP "\(bu" 4
+\fB*NIX long options\fR (\fB\-\-flag\fR, \fB\-\-option=value\fR, \fB\-\-option value\fR)
+.IP "\(bu" 4
+\fB*NIX short options\fR (\fB\-f\fR, \fB\-o value\fR, \fB\-o=value\fR; with \fB\-U\fR, single\-hyphen strings are split into individual letter flags)
+.IP "\(bu" 4
+\fBWindows/MSDOS switches\fR (\fB/S\fR, \fB/S:value\fR)
+.IP "" 0
+.P
+Shell redirections (\fB>\fR, \fB>>\fR, \fB2>\fR, \fB2>>\fR, \fB2>&1\fR) are recognised in\-line and recorded as output types rather than arguments\.
+.P
+Ambiguities (e\.g\. whether a bare token following a flag is its value or an independent positional argument) are resolved heuristically by read\-ahead: if the next token starts with \fB\-\fR, \fB/\fR, or \fB>\fR it is treated as a new argument and the current token is classified as a flag\. Use \fB\-\-suppress\-alternatives\fR to silence the reporting of such ambiguities\.
+.P
+If \fB\-\-run\fR is supplied the target command is also executed under \fBstrace\fR, and the files it reads and writes are reported to standard output\.
+.SH "OPTIONS"
+Options must appear \fBbefore\fR \fB\-\-\fR\. Any positional argument before \fB\-\-\fR is an error\.
+.TP
+\fB\-a\fR \fIval\fR, \fB\-a=\fR\fIval\fR, \fB\-\-assignment\-operator\fR \fIval\fR, \fB\-\-assignment\-operator=\fR\fIval\fR
+Override the character used as the assignment operator when splitting option names from values in the passthrough section\. By default the operator is inferred from context (\fB=\fR for long options, \fB:\fR for Windows switches, space otherwise)\.
+.TP
+\fB\-D\fR, \fB\-\-debug\fR
+Enable debug logging to standard error via Julia's \fBLogging\fR module\.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print a usage summary including annotated output examples, then exit 0\.
+.TP
+\fB\-l\fR \fIval\fR, \fB\-l=\fR\fIval\fR, \fB\-\-argument\-types\-library\fR \fIval\fR, \fB\-\-argument\-types\-library=\fR\fIval\fR
+Write the argument\-types shell fragment to \fIval\fR instead of the default path \fBlib\.<PROG>\.argument\-types\.sh\fR\.
+.TP
+\fB\-o\fR \fIval\fR, \fB\-o=\fR\fIval\fR, \fB\-\-output\-types\-library\fR \fIval\fR, \fB\-\-output\-types\-library=\fR\fIval\fR
+Write the output\-types shell fragment to \fIval\fR instead of the default path \fBlib\.<PROG>\.output\-types\.sh\fR\.
+.TP
+\fB\-R\fR, \fB\-\-run\fR
+Execute the passthrough command under \fBstrace\fR after generating the provenance fragments, and print the sets of files read and written\.
+.TP
+\fB\-S\fR, \fB\-\-suppress\-alternatives\fR
+Do not report ambiguous argument assignments; silently accept the default interpretation\.
+.TP
+\fB\-U\fR, \fB\-\-unix\-flags\fR
+Treat single\-hyphen options as compact flag strings (e\.g\. \fB\-ABC\fR is three flags \fB\-A\fR, \fB\-B\fR, \fB\-C\fR)\. Also sets \fB=\fR as the assignment operator for long options\.
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print the version string and exit 0\.
+.SH "EXIT STATUS"
+Returns 0 on success\.
+.P
+Returns 2 (via \fBdie\fR) if:
+.IP "\(bu" 4
+a required value is missing for a recognised option;
+.IP "\(bu" 4
+an unrecognised option appears before \fB\-\-\fR;
+.IP "\(bu" 4
+a positional argument appears before \fB\-\-\fR;
+.IP "\(bu" 4
+the first passthrough token is not a resolvable executable; or
+.IP "\(bu" 4
+any other fatal error is detected during argument processing\.
+.IP "" 0
+.SH "ENVIRONMENT"
+\fBrecord\-preprocess\.jl\fR does not read any environment variables directly\. If \fB\-\-run\fR is used, the child process inherits the full environment\.
+.SH "RETURN VALUE"
+On success the script writes to three destinations:
+.IP "\(bu" 4
+\fBstdout\fR: the \fB$ARGS\fR shell fragment\.
+.IP "\(bu" 4
+\fB\fBlib\.<PROG>\.argument\-types\.sh\fR\fR (or the path given by \fB\-l\fR): the argument\-type registration script, opened in append mode\.
+.IP "\(bu" 4
+\fB\fBlib\.<PROG>\.output\-types\.sh\fR\fR (or the path given by \fB\-o\fR): the output\-type registration script, opened in append mode\.
+.IP "" 0
+.SH "EXAMPLES"
+Generate provenance fragments for a Python script invocation:
+.IP "" 4
+.nf
+record\-preprocess\.jl \-\- prog\.py \e
+    \-\-out\-file=dougs\.file \e
+    \-on\-flag \e
+    \-A \e
+    \-i input_path\.dat \e
+    "pickling times are fun times" \e
+    2>&1 \e
+    > dougs\.out
+.fi
+.IP "" 0
+.P
+Generate fragments using Unix flag mode and a custom argument\-types path:
+.IP "" 4
+.nf
+record\-preprocess\.jl \e
+    \-U \e
+    \-l lib\.my_tool\.args\.sh \e
+    \-\- my_tool \-Dvf input\.dat > output\.dat
+.fi
+.IP "" 0
+.P
+Generate fragments and also run the command, tracing file I/O:
+.IP "" 4
+.nf
+record\-preprocess\.jl \-R \-\- my_tool \-\-config=conf\.yaml input\.dat
+.fi
+.IP "" 0
+.SH "FILES"
+.TP
+\fBlib\.<PROG>\.argument\-types\.sh\fR
+Shell script registering each argument type via \fBrecord_argument_type\fR\. Created or appended to in the current working directory unless overridden with \fB\-l\fR\.
+.TP
+\fBlib\.<PROG>\.output\-types\.sh\fR
+Shell script registering each output type via \fBrecord_output_box_type\fR\. Created or appended to in the current working directory unless overridden with \fB\-o\fR\.
+.SH "AUTHORS"
+Doug Salt
+.SH "REPORTING BUGS"
+Report bugs to the maintainers of the RECORD workflow tools\.
+.SH "BUGS"
+The \fBparse_before_double_dash\fR function calls \fBsplit(a, "=", limit=2)\fR unconditionally when \fB\-\-assignment\-operator\fR or \fB\-\-argument\-types\-library\fR is detected, but then tests the variable \fBval\fR (undefined) rather than \fBvalue\fR, meaning the \fB=\fR\-form of these options will always raise an \fBUndefVarError\fR at runtime\.
+.P
+Similarly, in the \fB\-a=\fR and \fB\-l=\fR short\-option handlers, the parsed value is assigned to \fBval\fR (undefined) rather than \fBassignment_operator\fR or \fBarguments_path\fR\.
+.P
+The \fB\-\-unix\-flags\fR handler sets \fBassignment_operator = "="\fR at module level but \fBparse_before_double_dash\fR also returns a local \fBunix_flags\fR/\fBassignment_operator\fR; the interaction between the global and local variables may produce unexpected behaviour\.
+.P
+In the main passthrough loop, the variable \fBassingment\fR (a typo for \fBassignment\fR) is written in several branches but the correctly\-spelled \fBassignment\fR is what is passed to \fBpreprocessor\fR, so the space\-separated assignment operator is silently discarded\.
+.P
+The \fB>\fR redirection handler contains a bare \fBname =\fR with no right\-hand side (line 800), which is a syntax error that will prevent the script from loading\.
+.P
+The \fBtrace_file_io\fR function contains two debugging \fBprintln\fR calls (\fB"pickle"\fR and \fB"pockle"\fR) that are unconditionally written to standard output and will corrupt the \fB$ARGS\fR fragment when \fB\-\-run\fR is used\.
+.P
+The output\-types library file is opened in append mode; re\-running the script for the same \fB$PROG\fR will duplicate entries rather than replacing them\.
+.P
+Multi\-arity argument handling is not yet implemented; the relevant \fB\-\-arity\fR and \fB\-\-separator\fR lines in \fBpreprocessor\fR are commented out with a \fBTODO\fR note\.
+.SH "COPYRIGHT"
+Copyright \(co 2016 The James Hutton Institute\. License GPLv3+: GNU GPL version 3 or later \fIhttps://gnu\.org/licenses/gpl\.html\fR\.
+.P
+This is free software: you are free to change and redistribute it\. There is NO WARRANTY, to the extent permitted by law\.
+.SH "SEE ALSO"
+\fBrecord\.py\fR, \fBrecord\.sh\fR, \fBrecord\-update\.py\fR, \fBrecord\-get\-io\.jl\fR, \fBexists\.py\fR, \fBget\-value\.py\fR, \fBsearch\.py\fR, \fBcreate\-database\.py\fR
+.SH "HISTORY"
+Created as part of the RECORD workflow tools to automate generation of provenance\-recording boilerplate for arbitrary command invocations, supporting *NIX, Windows, and PowerShell argument conventions\.

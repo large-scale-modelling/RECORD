@@ -1571,11 +1571,11 @@ class Argument(Table):
 
     def validate(self, update=False):
         Table.validate(self)
-        if (update == True and self.TYPE == None):
-            raise InvalidEntity('ERROR: Class: ' + 
-                self.__class__.__name__ + 
-                ': Invalid column: TYPE: ' +
-                str(self.TYPE))
+#        if (update == True and self.TYPE == None):
+#            raise InvalidEntity('ERROR: Class: ' + 
+#                self.__class__.__name__ + 
+#                ': Invalid column: TYPE: ' +
+#                str(self.TYPE))
         if (update == False and 
             self.TYPE.lower() != 'required' and    
             self.TYPE.lower() != 'option' and 

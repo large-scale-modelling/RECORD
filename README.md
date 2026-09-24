@@ -20,7 +20,6 @@ This repository is for the Miracle simulation metadata outputs specification, no
 + `LICENCSE` - GPLv3 license
 + `man` - a directory with a bunch of Unix man pages.
 + `miracle.python3.requirements` - the requirements needed to build the Python environment
-+ `slurm-outputs` - this whole framework has now been properly parallelised so this is where the slurm journals go (warning: there are a lot of them.)
 
 # RUNNING THE EXAMPLE
 

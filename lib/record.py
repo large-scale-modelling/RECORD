@@ -4631,7 +4631,7 @@ class TagMap(Table):
        ]
     @classmethod
     def foreignKeys(cls):
-        return [{ 'sourceTable' : 'Tags', 'sourceColumn' : 'TAG', 'targetTable' : 'Tags', 'targetColumn' : 'ID_TAG' },
+        return [{ 'sourceTable' : 'TagMaps', 'sourceColumn' : 'TAG', 'targetTable' : 'Tags', 'targetColumn' : 'ID_TAG' },
                 { 'sourceTable' : 'TagMaps', 'sourceColumn' : 'OTHER_TAG', 'targetTable' : 'Tags', 'targetColumn' : 'ID_TAG' },
                 { 'sourceTable' : 'TagMaps', 'sourceColumn' : 'BOX_TYPE', 'targetTable' : 'BoxTypes', 'targetColumn' : 'ID_BOX_TYPE' },
                 { 'sourceTable' : 'TagMaps', 'sourceColumn' : 'APPLICATION', 'targetTable' : 'Applications', 'targetColumn' : 'ID_APPLICATION' },
@@ -5922,6 +5922,7 @@ def table_exists(conn, table_name):
         else:
             return False
     elif db_type == 'postgres':
+        cur = conn.cursor()
         cur.execute("""
             SELECT EXISTS (
                 SELECT 1 FROM information_schema.tables 
@@ -5929,7 +5930,11 @@ def table_exists(conn, table_name):
                 AND table_schema = 'public'
             )
         """, (table_name.lower(),))
+        result = cur.fetchone()
+        if isinstance(result, dict):
+            return bool(result['exists'])
     elif db_type == 'sqlite3':
+        cur = conn.cursor()
         cur.execute("""
             SELECT EXISTS (
                 SELECT 1 FROM sqlite_master 
@@ -5937,15 +5942,16 @@ def table_exists(conn, table_name):
                 AND name = ?
             )
         """, (table_name,))
+        result = cur.fetchone()
+        if isinstance(result, dict):
+            return bool(result['exists'])
+    elif db_type == 'gremlin':
+        return True
     else:
         raise ValueError(f"LIB: table_exists: Unsupported database: {db_type}")
     
-    cur = conn.cursor()
-    result = cur.fetchone()
 
-    if isinstance(result, dict):
-        return bool(result['exists'])
-    return bool(result[0])
+    return False
 
 def gremlin_add_edge( conn, someArgs ):
 
